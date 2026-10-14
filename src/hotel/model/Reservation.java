@@ -1,7 +1,7 @@
+package hotel.model;
 import hotel.model.Guest;
 import hotel.model.Room;
 import hotel.model.RoomType;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
