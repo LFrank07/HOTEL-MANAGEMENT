@@ -1,17 +1,8 @@
--- Hotel Management - Group 3: schema
--- DBMS: MySQL 8.0 (8.0.16 or later is needed for CHECK constraints).
--- MySQL-specific parts are marked "MySQL:" in a comment.
 
--- MySQL: backticks quote names; CHARACTER SET/COLLATE choose the text encoding.
-DROP DATABASE IF EXISTS `Hotel_Management_Group3`;
 CREATE DATABASE `Hotel_Management_Group3`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 USE `Hotel_Management_Group3`;
-
--- MySQL: ENGINE=InnoDB is the storage engine that enforces foreign keys
--- and transactions; ENUM limits a column to a fixed list of values
--- (the standard-SQL equivalent is CHECK (column IN (...))).
 
 CREATE TABLE Hotels (
     Hotel_ID INT NOT NULL,
@@ -289,22 +280,9 @@ END$$
 
 DELIMITER ;
 
--- =====================================================================
--- Hotel Management - Group 3
--- sample_data.sql  (all 16 tables, at least 15 rows in every table)
--- Run schema.sql first, then this file.
--- Insert order = parent tables first, so every foreign key finds its row:
---   Hotels, Position, Staff, RoomType, RatePlan, HasRate, Room,
---   Guests, Services, Guests_Phone, Reservation, Invoices, Stays,
---   Records, InvoiceLine, Payment
--- "Today" in this data is 2026-11-17: four guests are still in-house.
--- =====================================================================
-
 USE `Hotel_Management_Group3`;
 
--- ---------------------------------------------------------------------
--- 1. Hotels (15 hotels of the group)
--- ---------------------------------------------------------------------
+
 INSERT INTO Hotels (Hotel_ID, Name, Address) VALUES
 (1, 'Saigon Riverside Hotel', '12 Ton Duc Thang, District 1, Ho Chi Minh City'),
 (2, 'Hanoi Old Quarter Hotel', '45 Hang Bong, Hoan Kiem, Ha Noi'),
@@ -322,9 +300,6 @@ INSERT INTO Hotels (Hotel_ID, Name, Address) VALUES
 (14, 'Hai Phong Harbour Hotel', '27 Dien Bien Phu, Ngo Quyen, Hai Phong'),
 (15, 'Phan Thiet Dunes Resort', '75 Nguyen Dinh Chieu, Mui Ne, Phan Thiet, Binh Thuan');
 
--- ---------------------------------------------------------------------
--- 2. Position (job titles; the same BaseRole appears at several levels)
--- ---------------------------------------------------------------------
 INSERT INTO Position (Role_ID, DepartmentFocus, Level, BaseRole) VALUES
 (1, 'Management', 'Manager', 'General Manager'),
 (2, 'Front Office', 'Supervisor', 'Receptionist'),
@@ -342,10 +317,6 @@ INSERT INTO Position (Role_ID, DepartmentFocus, Level, BaseRole) VALUES
 (14, 'Security', 'Junior', 'Security Officer'),
 (15, 'Wellness', 'Senior', 'Spa Therapist');
 
--- ---------------------------------------------------------------------
--- 3. Staff (every hotel has a General Manager with no supervisor)
---    Managers are inserted first, then the staff who report to them.
--- ---------------------------------------------------------------------
 INSERT INTO Staff (Staff_ID, Name, Supervisor_ID, Hotel_ID, Role_ID) VALUES
 (1, 'Nguyen Minh Quan', NULL, 1, 1),
 (6, 'Tran Thu Ha', NULL, 2, 1),
@@ -387,9 +358,6 @@ INSERT INTO Staff (Staff_ID, Name, Supervisor_ID, Hotel_ID, Role_ID) VALUES
 (38, 'Duong Thi Xuan', 26, 14, 3),
 (39, 'Ly Van Hieu', 27, 15, 7);
 
--- ---------------------------------------------------------------------
--- 4. RoomType (BasePrice in VND per night; Capacity must be 1..5)
--- ---------------------------------------------------------------------
 INSERT INTO RoomType (TypeID, Name, BasePrice, Capacity) VALUES
 (1, 'Standard', 800000.00, 2),
 (2, 'Deluxe', 1200000.00, 2),
@@ -407,11 +375,6 @@ INSERT INTO RoomType (TypeID, Name, BasePrice, Capacity) VALUES
 (14, 'Presidential Suite', 6500000.00, 4),
 (15, 'Accessible Room', 900000.00, 2);
 
--- ---------------------------------------------------------------------
--- 5. RatePlan (seasons; they do not overlap)
---    StartDate/EndDate are DATETIME, so each season ends at 23:59:59 of its
---    last day. Any date outside a season uses RoomType.BasePrice.
--- ---------------------------------------------------------------------
 INSERT INTO RatePlan (RatePlan_ID, SeasonName, StartDate, EndDate) VALUES
 (1, 'Tet Holiday 2026', '2026-02-14 00:00:00', '2026-02-22 23:59:59'),
 (2, 'Summer Peak 2026', '2026-06-01 00:00:00', '2026-08-31 23:59:59'),
@@ -429,12 +392,6 @@ INSERT INTO RatePlan (RatePlan_ID, SeasonName, StartDate, EndDate) VALUES
 (14, 'Summer Peak 2027', '2027-06-01 00:00:00', '2027-08-31 23:59:59'),
 (15, 'National Day 2027', '2027-09-01 00:00:00', '2027-09-03 23:59:59');
 
--- ---------------------------------------------------------------------
--- 6. HasRate (price of a room type in a season)
---    Planted gaps, where the bill must fall back to BasePrice:
---    Suite (4) has no National Day 2026 price; Presidential Suite (14) has no
---    Black Friday price; Accessible Room (15) never has a season price.
--- ---------------------------------------------------------------------
 INSERT INTO HasRate (TypeID, RatePlan_ID, Price) VALUES
 (1, 1, 1200000.00),
 (2, 1, 1800000.00),
@@ -645,11 +602,6 @@ INSERT INTO HasRate (TypeID, RatePlan_ID, Price) VALUES
 (13, 15, 5130000.00),
 (14, 15, 8780000.00);
 
--- ---------------------------------------------------------------------
--- 7. Room (key = Hotel_ID + Room_Number)
---    Room 101 exists in many hotels: allowed, because the key is composite.
---    The four 'Occupied' rooms are exactly the rooms of the in-house stays.
--- ---------------------------------------------------------------------
 INSERT INTO Room (Hotel_ID, Room_Number, RoomStatus, FloorNumber, TypeID) VALUES
 (1, '101', 'Available', 1, 1),
 (1, '102', 'Occupied', 1, 1),
@@ -708,9 +660,6 @@ INSERT INTO Room (Hotel_ID, Room_Number, RoomStatus, FloorNumber, TypeID) VALUES
 (15, '201', 'Available', 2, 9),
 (15, '301', 'Available', 3, 10);
 
--- ---------------------------------------------------------------------
--- 8. Guests (Doc_ID = identity card or passport number, unique)
--- ---------------------------------------------------------------------
 INSERT INTO Guests (Guest_ID, Doc_ID, Name) VALUES
 (1, '079201004512', 'Nguyen Van An'),
 (2, '079199012345', 'Tran Thi Bich'),
@@ -733,9 +682,6 @@ INSERT INTO Guests (Guest_ID, Doc_ID, Name) VALUES
 (19, '064200034567', 'Mai Anh Tuan'),
 (20, '087199178901', 'Luong Bao Chau');
 
--- ---------------------------------------------------------------------
--- 9. Services ('Bike Rental' is never sold: a test case for the queries)
--- ---------------------------------------------------------------------
 INSERT INTO Services (ServiceID, ServiceType) VALUES
 (1, 'Breakfast'),
 (2, 'Laundry'),
@@ -753,10 +699,6 @@ INSERT INTO Services (ServiceID, ServiceType) VALUES
 (14, 'Babysitting'),
 (15, 'Meeting Room');
 
--- ---------------------------------------------------------------------
--- 10. Guests_Phone (multivalued attribute Phone)
---    Guests 1, 4 and 14 have two numbers; guest 12 has none.
--- ---------------------------------------------------------------------
 INSERT INTO Guests_Phone (Phone, Guest_ID) VALUES
 ('0903123456', 1),
 ('0281234567', 1),
@@ -781,12 +723,6 @@ INSERT INTO Guests_Phone (Phone, Guest_ID) VALUES
 ('0868123987', 19),
 ('0779456123', 20);
 
--- ---------------------------------------------------------------------
--- 11. Reservation (a booking is for a room TYPE, not a room)
---    1-19 and 30+  finished stays        20-23 guests in-house now
---    24-29 no stay: cancelled, no-show, pending, future bookings
---    29    Guest_ID is NULL: the guest record was deleted (ON DELETE SET NULL)
--- ---------------------------------------------------------------------
 INSERT INTO Reservation (Reservation_ID, StartDate, EndDate, BookingStatus, NoOfGuests, Guest_ID, TypeID) VALUES
 (1, '2026-02-13', '2026-02-16', 'CheckedOut', 2, 1, 1),
 (2, '2026-02-18', '2026-02-21', 'CheckedOut', 2, 2, 2),
@@ -865,12 +801,6 @@ INSERT INTO Reservation (Reservation_ID, StartDate, EndDate, BookingStatus, NoOf
 (75, '2026-08-03', '2026-08-05', 'CheckedOut', 1, 20, 8),
 (76, '2026-08-20', '2026-08-23', 'CheckedOut', 1, 20, 5);
 
--- ---------------------------------------------------------------------
--- 12. Invoices (one per stay; Invoice_ID = StayID to keep the data readable)
---    The invoice is opened at check-in, because Stays.Invoice_ID is NOT NULL.
---    Finished stays: IssueDate = check-out date. In-house stays: Status 'Open',
---    IssueDate = check-in date. Invoice 15 is partially paid, 19 is unpaid.
--- ---------------------------------------------------------------------
 INSERT INTO Invoices (Invoice_ID, IssueDate, Status) VALUES
 (1, '2026-02-16', 'Paid'),
 (2, '2026-02-21', 'Paid'),
@@ -943,14 +873,6 @@ INSERT INTO Invoices (Invoice_ID, IssueDate, Status) VALUES
 (75, '2026-08-05', 'Paid'),
 (76, '2026-08-23', 'Paid');
 
--- ---------------------------------------------------------------------
--- 13. Stays (the room is assigned here, at check-in)
---    Stays 20-23 have Checkout = NULL: the guest is still in the room.
---    Guests 1 and 2 have stayed at all 15 hotels; guest 3 at 14 of them
---    (at hotel 3 he only has a cancelled booking).
---    Stay 7 crosses May/June and base price/Summer Peak.
---    Stay 15 crosses Summer Peak/National Day, where Suite has no season price.
--- ---------------------------------------------------------------------
 INSERT INTO Stays (StayID, CheckIn, Checkout, Reservation_ID, Invoice_ID, Hotel_ID, Room_Number) VALUES
 (1, '2026-02-13 15:20:00', '2026-02-16 11:00:00', 1, 1, 1, '101'),
 (2, '2026-02-18 14:30:00', '2026-02-21 09:45:00', 2, 2, 2, '201'),
@@ -1152,11 +1074,6 @@ INSERT INTO Records (StayID, ServiceID, Date, Price, Quantity) VALUES
 (76, 3, '2026-08-21 19:30:00', 600000.00, 1),
 (76, 5, '2026-08-21 19:30:00', 120000.00, 1);
 
--- ---------------------------------------------------------------------
--- 15. InvoiceLine (written when the invoice is issued at check-out)
---    Room lines: one per group of nights at the same rate. Service lines: one
---    per Records row. The four Open invoices (20-23) have no lines yet.
--- ---------------------------------------------------------------------
 INSERT INTO InvoiceLine (LineID, Invoice_ID, Type, Amount, Description) VALUES
 (1, 1, 'Room', 800000.00, 'Standard room 101: 1 night x 800,000 (Base price)'),
 (2, 1, 'Room', 2400000.00, 'Standard room 101: 2 nights x 1,200,000 (Tet Holiday 2026)'),
@@ -1344,11 +1261,6 @@ INSERT INTO InvoiceLine (LineID, Invoice_ID, Type, Amount, Description) VALUES
 (2, 76, 'Service', 600000.00, 'Spa on 2026-08-21: 1 x 600,000'),
 (3, 76, 'Service', 120000.00, 'Minibar on 2026-08-21: 1 x 120,000');
 
--- ---------------------------------------------------------------------
--- 16. Payment
---    Invoices 9 and 12: deposit at check-in + balance at check-out.
---    Invoice 15: 10,000,000 paid of 18,830,000. Invoice 19: nothing paid yet.
--- ---------------------------------------------------------------------
 INSERT INTO Payment (PaymentID, PaidDate, Method, Amount, Invoice_ID) VALUES
 (1, '2026-02-16 11:00:00', 'Cash', 3920000.00, 1),
 (2, '2026-02-21 09:45:00', 'BankTransfer', 6950000.00, 2),
@@ -1418,10 +1330,7 @@ INSERT INTO Payment (PaymentID, PaidDate, Method, Amount, Invoice_ID) VALUES
 (66, '2026-08-05 11:15:00', 'EWallet', 2740000.00, 75),
 (67, '2026-08-23 10:00:00', 'CreditCard', 3150000.00, 76);
 
--- ---------------------------------------------------------------------
--- Quick check: number of rows per table (every table must have >= 15)
--- Expected: 15, 15, 39, 15, 15, 208, 56, 20, 15, 22, 76, 70, 70, 121, 185, 67  (total 1009)
--- ---------------------------------------------------------------------
+-- QUICK CHECK --
 SELECT 'Hotels' AS TableName, COUNT(*) AS NumRows FROM Hotels
 UNION ALL SELECT 'Position', COUNT(*) FROM Position
 UNION ALL SELECT 'Staff', COUNT(*) FROM Staff
