@@ -34,130 +34,212 @@ The core entities are structured into five main subsystems:
 
 ## 🗄 Relational Database Schema (DDL)
 
-```sql
--- Hotel Structure & Pricing
-CREATE TABLE room_type (
-    roomtype_id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    capacity INT NOT NULL
-);
+```
+DROP DATABASE IF EXISTS `Hotel_Management_Group3`;
+CREATE DATABASE `Hotel_Management_Group3`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+USE `Hotel_Management_Group3`;
 
-CREATE TABLE rate_plan (
-    rateplan_id BIGSERIAL PRIMARY KEY,
-    roomtype_id BIGINT REFERENCES room_type(roomtype_id),
-    season_name VARCHAR(100),
-    start_date DATE,
-    end_date DATE,
-    price DECIMAL(12, 2) NOT NULL
-);
+CREATE TABLE Hotels (
+    Hotel_ID INT NOT NULL,
+    Name CHAR(100) NOT NULL,
+    Address CHAR(150) NOT NULL,
+    CONSTRAINT PK_Hotels PRIMARY KEY (Hotel_ID),
+    CONSTRAINT UQ_Hotels_Name UNIQUE (Name)
+) ENGINE=InnoDB;
 
-CREATE TABLE hotel (
-    hotel_id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    address VARCHAR(255)
-);
+CREATE TABLE Position (
+    Role_ID INT NOT NULL,
+    DepartmentFocus VARCHAR(50) NOT NULL,
+    Level ENUM('Junior','Senior','Supervisor','Manager'),
+    BaseRole VARCHAR(50) NOT NULL,
+    CONSTRAINT PK_Position PRIMARY KEY (Role_ID),
+    CONSTRAINT UQ_Position_Title UNIQUE (BaseRole, DepartmentFocus, Level)
+) ENGINE=InnoDB;
 
-CREATE TABLE floor (
-    floor_id BIGSERIAL PRIMARY KEY,
-    hotel_id BIGINT REFERENCES hotel(hotel_id),
-    floor_number INT NOT NULL
-);
+CREATE TABLE Staff (
+    Staff_ID INT NOT NULL,
+    Name VARCHAR(100) NOT NULL,
+    Supervisor_ID INT NULL,
+    Hotel_ID INT NOT NULL,
+    Role_ID INT NOT NULL,
+    CONSTRAINT PK_Staff PRIMARY KEY (Staff_ID),
+    CONSTRAINT FK_Staff_Hotels FOREIGN KEY (Hotel_ID)
+        REFERENCES Hotels (Hotel_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Staff_Position FOREIGN KEY (Role_ID)
+        REFERENCES Position (Role_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Staff_Supervisor FOREIGN KEY (Supervisor_ID)
+        REFERENCES Staff (Staff_ID)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
-CREATE TABLE room (
-    room_id BIGSERIAL PRIMARY KEY,
-    hotel_id BIGINT REFERENCES hotel(hotel_id),
-    floor_id BIGINT REFERENCES floor(floor_id),
-    roomtype_id BIGINT REFERENCES room_type(roomtype_id),
-    room_number VARCHAR(20) NOT NULL,
-    status VARCHAR(50) DEFAULT 'AVAILABLE'
-);
+CREATE TABLE RoomType (
+    TypeID INT NOT NULL,
+    Name CHAR(100) NOT NULL,
+    BasePrice DECIMAL(12,2) NOT NULL,
+    Capacity INT NOT NULL,
+    CONSTRAINT PK_RoomType PRIMARY KEY (TypeID),
+    CONSTRAINT UQ_RoomType_Name UNIQUE (Name),
+    CONSTRAINT CHK_RoomType_Price CHECK (BasePrice >= 0),
+    CONSTRAINT CHK_RoomType_Capacity CHECK (Capacity BETWEEN 1 AND 5)
+) ENGINE=InnoDB;
 
--- Guest & Identity
-CREATE TABLE guest (
-    guest_id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20)
-);
+CREATE TABLE RatePlan (
+    RatePlan_ID INT NOT NULL,
+    SeasonName VARCHAR(50) NOT NULL,
+    StartDate DATETIME NOT NULL,
+    EndDate DATETIME NOT NULL,
+    CONSTRAINT PK_RatePlan PRIMARY KEY (RatePlan_ID),
+    CONSTRAINT UQ_RatePlan_SeasonName UNIQUE (SeasonName),
+    CONSTRAINT CHK_RatePlan_Dates CHECK (EndDate >= StartDate)
+) ENGINE=InnoDB;
 
-CREATE TABLE identity_document (
-    doc_id BIGSERIAL PRIMARY KEY,
-    guest_id BIGINT REFERENCES guest(guest_id) ON DELETE CASCADE,
-    doc_type VARCHAR(50) NOT NULL,
-    doc_number VARCHAR(100) NOT NULL
-);
+CREATE TABLE Room (
+    Hotel_ID    INT NOT NULL,
+    Room_Number VARCHAR(10) NOT NULL,
+    RoomStatus  ENUM('Available','Occupied','Maintenance') NOT NULL,
+    FloorNumber INT NOT NULL,
+    TypeID      INT NOT NULL,
+    CONSTRAINT PK_Room PRIMARY KEY (Hotel_ID, Room_Number),
+    CONSTRAINT FK_Room_Hotels FOREIGN KEY (Hotel_ID)
+        REFERENCES Hotels (Hotel_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Room_RoomType FOREIGN KEY (TypeID)
+        REFERENCES RoomType (TypeID)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
--- Staff Management
-CREATE TABLE staff (
-    staff_id BIGSERIAL PRIMARY KEY,
-    supervisor_id BIGINT REFERENCES staff(staff_id),
-    name VARCHAR(100) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    shift VARCHAR(50),
-    rooms_assigned VARCHAR(255)
-);
+CREATE TABLE Guests (
+    Guest_ID INT NOT NULL,
+    Doc_ID   VARCHAR(20) NOT NULL,
+    Name     VARCHAR(100) NOT NULL,
+    CONSTRAINT PK_Guests PRIMARY KEY (Guest_ID),
+    CONSTRAINT UQ_Guests_DocID UNIQUE (Doc_ID)
+) ENGINE=InnoDB;
 
--- Reservations & Stays
-CREATE TABLE reservation (
-    reservation_id BIGSERIAL PRIMARY KEY,
-    guest_id BIGINT REFERENCES guest(guest_id),
-    roomtype_id BIGINT REFERENCES room_type(roomtype_id),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    status VARCHAR(50) DEFAULT 'PENDING'
-);
+CREATE TABLE Services (
+    ServiceID   INT NOT NULL,
+    ServiceType VARCHAR(50) NOT NULL,
+    CONSTRAINT PK_Services PRIMARY KEY (ServiceID),
+    CONSTRAINT UQ_Services_ServiceType UNIQUE (ServiceType)
+) ENGINE=InnoDB;
 
-CREATE TABLE reservation_room (
-    reservation_id BIGINT REFERENCES reservation(reservation_id),
-    room_id BIGINT REFERENCES room(room_id),
-    PRIMARY KEY (reservation_id, room_id)
-);
+CREATE TABLE HasRate (
+    TypeID INT NOT NULL,
+    RatePlan_ID INT NOT NULL,
+    Price DECIMAL(12,2) NOT NULL,
+    CONSTRAINT PK_HasRate PRIMARY KEY (TypeID, RatePlan_ID),
+    CONSTRAINT FK_HasRate_RoomType FOREIGN KEY (TypeID)
+        REFERENCES RoomType (TypeID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT FK_HasRate_RatePlan FOREIGN KEY (RatePlan_ID)
+        REFERENCES RatePlan (RatePlan_ID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT CK_HasRate_Price CHECK (Price >= 0)
+) ENGINE=InnoDB;
 
-CREATE TABLE stay (
-    stay_id BIGSERIAL PRIMARY KEY,
-    reservation_id BIGINT UNIQUE REFERENCES reservation(reservation_id),
-    check_in TIMESTAMP NOT NULL,
-    check_out TIMESTAMP
-);
+CREATE TABLE Guests_Phone (
+    Phone VARCHAR(20) NOT NULL,
+    Guest_ID INT NOT NULL,
+    CONSTRAINT PK_Guests_Phone PRIMARY KEY (Phone, Guest_ID),
+    CONSTRAINT FK_GuestsPhone_Guests FOREIGN KEY (Guest_ID)
+        REFERENCES Guests (Guest_ID)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
--- Services & Billing
-CREATE TABLE service (
-    service_id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    unit_price DECIMAL(12, 2) NOT NULL
-);
+CREATE TABLE Reservation (
+    Reservation_ID INT NOT NULL,
+    StartDate DATE NOT NULL,
+    EndDate DATE NOT NULL,
+    BookingStatus VARCHAR(50) NOT NULL,
+    NoOfGuests INT NOT NULL,
+    Guest_ID INT NULL,
+    TypeID INT NOT NULL,
+    CONSTRAINT PK_Reservation PRIMARY KEY (Reservation_ID),
+    CONSTRAINT CHK_Reservation_Guests CHECK (NoOfGuests > 0),
+    CONSTRAINT CHK_Reservation_Dates CHECK (EndDate >= StartDate),
+    CONSTRAINT FK_Reservation_Guests FOREIGN KEY (Guest_ID)
+        REFERENCES Guests (Guest_ID)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT FK_Reservation_RoomType FOREIGN KEY (TypeID)
+        REFERENCES RoomType (TypeID)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
-CREATE TABLE service_consumption (
-    consumption_id BIGSERIAL PRIMARY KEY,
-    stay_id BIGINT REFERENCES stay(stay_id),
-    service_id BIGINT REFERENCES service(service_id),
-    quantity INT NOT NULL,
-    amount DECIMAL(12, 2) NOT NULL,
-    consumed_date TIMESTAMP NOT NULL
-);
+CREATE TABLE Invoices (
+    Invoice_ID INT NOT NULL,
+    IssueDate DATE NOT NULL,
+    Status VARCHAR(50) NOT NULL,
+    CONSTRAINT PK_Invoices PRIMARY KEY (Invoice_ID)
+) ENGINE=InnoDB;
 
-CREATE TABLE invoice (
-    invoice_id BIGSERIAL PRIMARY KEY,
-    issue_date DATE NOT NULL,
-    status VARCHAR(50) DEFAULT 'UNPAID'
-);
+CREATE TABLE Stays (
+    StayID INT NOT NULL,
+    CheckIn DATETIME NOT NULL,
+    Checkout DATETIME NULL,
+    Reservation_ID INT NOT NULL,
+    Invoice_ID INT NOT NULL,
+    Hotel_ID INT NOT NULL,
+    Room_Number VARCHAR(10) NOT NULL,
+    CONSTRAINT PK_Stays PRIMARY KEY (StayID),
+    CONSTRAINT CHK_Stays_Dates CHECK (Checkout IS NULL OR Checkout >= CheckIn),
+    CONSTRAINT FK_Stays_Reservation FOREIGN KEY (Reservation_ID)
+        REFERENCES Reservation (Reservation_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Stays_Invoices FOREIGN KEY (Invoice_ID)
+        REFERENCES Invoices (Invoice_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Stays_Room FOREIGN KEY (Hotel_ID, Room_Number)
+        REFERENCES Room (Hotel_ID, Room_Number)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
-CREATE TABLE invoice_line (
-    line_id BIGSERIAL PRIMARY KEY,
-    invoice_id BIGINT REFERENCES invoice(invoice_id),
-    stay_id BIGINT REFERENCES stay(stay_id),
-    consumption_id BIGINT REFERENCES service_consumption(consumption_id),
-    type VARCHAR(50) NOT NULL,
-    amount DECIMAL(12, 2) NOT NULL,
-    description VARCHAR(255)
-);
+CREATE TABLE Records (
+    StayID INT NOT NULL,
+    ServiceID INT NOT NULL,
+    Date DATETIME NOT NULL,
+    Price DECIMAL(12,2) NOT NULL,
+    Quantity INT NOT NULL,
+    CONSTRAINT PK_Records PRIMARY KEY (Date, StayID, ServiceID),
+    CONSTRAINT CHK_Records_Price CHECK (Price >= 0),
+    CONSTRAINT CHK_Records_Qty CHECK (Quantity > 0),
+    CONSTRAINT FK_Records_Stays FOREIGN KEY (StayID)
+        REFERENCES Stays (StayID)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT FK_Records_Services FOREIGN KEY (ServiceID)
+        REFERENCES Services (ServiceID)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
-CREATE TABLE payment (
-    payment_id BIGSERIAL PRIMARY KEY,
-    invoice_id BIGINT REFERENCES invoice(invoice_id),
-    amount DECIMAL(12, 2) NOT NULL,
-    paid_date DATE NOT NULL,
-    method VARCHAR(50) NOT NULL
-);
+CREATE TABLE InvoiceLine (
+    LineID INT NOT NULL,
+    Invoice_ID INT NOT NULL,
+    Type VARCHAR(50) NOT NULL,
+    Amount DECIMAL(12,2) NOT NULL,
+    Description VARCHAR(255),
+    CONSTRAINT PK_InvoiceLine PRIMARY KEY (LineID, Invoice_ID),
+    CONSTRAINT CHK_InvoiceLine_Amount CHECK (Amount >= 0),
+    CONSTRAINT FK_InvoiceLine_Invoices FOREIGN KEY (Invoice_ID)
+        REFERENCES Invoices (Invoice_ID)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE Payment (
+    PaymentID INT NOT NULL,
+    PaidDate DATETIME NOT NULL,
+    Method VARCHAR(50) NOT NULL,
+    Amount DECIMAL(12,2) NOT NULL,
+    Invoice_ID INT NOT NULL,
+    CONSTRAINT PK_Payment PRIMARY KEY (PaymentID),
+    CONSTRAINT CHK_Payment_Amount CHECK (Amount > 0),
+    CONSTRAINT FK_Payment_Invoices FOREIGN KEY (Invoice_ID)
+        REFERENCES Invoices (Invoice_ID)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
 ```
 ### SQL Query
 
