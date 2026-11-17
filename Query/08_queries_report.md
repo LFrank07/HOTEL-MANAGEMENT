@@ -95,8 +95,13 @@ Available := π type_id, room_count − occupied_count − reserved_count ( Inve
 **Result**
 
 ```
-<img width="410" height="56" alt="image" src="https://github.com/user-attachments/assets/a02f8005-e624-4e1b-b4f5-27ee052bf8ca" />
-
++------------------+----------------+----------------+-------------------------+-----------------+
+| room_type        | room_inventory | occupied_rooms | unassigned_reservations | available_rooms |
++------------------+----------------+----------------+-------------------------+-----------------+
+| Standard Double  |              1 |              0 |                       0 |               1 |
+| Studio Apartment |              1 |              0 |                       0 |               1 |
+| Superior Twin    |              1 |              0 |                       0 |               1 |
++------------------+----------------+----------------+-------------------------+-----------------+
 ```
 
 ## Q2 – What is the bill of one stay, with room charges and services?
@@ -121,10 +126,24 @@ GROUP BY stay_id;
 **Result**
 
 ```
-<img width="294" height="131" alt="image" src="https://github.com/user-attachments/assets/651a24fe-ec3e-443f-970c-59348735de0c" />
-
-<img width="254" height="30" alt="image" src="https://github.com/user-attachments/assets/076dbc3f-c1cd-4cd8-b8c6-12d506cdbba7" />
-
++------------+-----------+-----------------------------+------------+
+| line_date  | line_type | description                 | amount     |
++------------+-----------+-----------------------------+------------+
+| 2026-02-09 | SERVICE   | Room Service Meal x2        |  640000.00 |
+| 2026-02-09 | ROOM      | Room 202 - night 2026-02-09 | 2380000.00 |
+| 2026-02-10 | SERVICE   | Lunch Set Menu x1           |  250000.00 |
+| 2026-02-10 | ROOM      | Room 202 - night 2026-02-10 | 4480000.00 |
+| 2026-02-11 | ROOM      | Room 202 - night 2026-02-11 | 4480000.00 |
+| 2026-02-12 | ROOM      | Room 202 - night 2026-02-12 | 4480000.00 |
+| 2026-02-13 | SERVICE   | Minibar Snack x3            |  135000.00 |
+| 2026-02-13 | ROOM      | Room 202 - night 2026-02-13 | 4480000.00 |
+| 2026-02-14 | SERVICE   | Minibar Beer x1             |   50000.00 |
++------------+-----------+-----------------------------+------------+
++---------+--------------+-----------------+-------------+
+| stay_id | room_charges | service_charges | total_bill  |
++---------+--------------+-----------------+-------------+
+|     290 |  20300000.00 |      1075000.00 | 21375000.00 |
++---------+--------------+-----------------+-------------+
 ```
 
 ## Q3 – What is the occupancy rate per month per hotel?
@@ -172,8 +191,21 @@ ORDER BY h.name, m.m_start;
 **Result** (result shown for hotel 1 only; the query returns 15 hotels x 11 months)
 
 ```
-<img width="343" height="289" alt="image" src="https://github.com/user-attachments/assets/34922124-6638-41e9-8b0d-71987815a16a" />
-
++----------------+---------+-----------------+------------------+---------------+
+| hotel          | month   | occupied_nights | available_nights | occupancy_pct |
++----------------+---------+-----------------+------------------+---------------+
+| Saigon Central | 2026-01 |              62 |              155 |          40.0 |
+| Saigon Central | 2026-02 |              49 |              140 |          35.0 |
+| Saigon Central | 2026-03 |              50 |              155 |          32.3 |
+| Saigon Central | 2026-04 |              51 |              150 |          34.0 |
+| Saigon Central | 2026-05 |              38 |              155 |          24.5 |
+| Saigon Central | 2026-06 |              62 |              150 |          41.3 |
+| Saigon Central | 2026-07 |              70 |              155 |          45.2 |
+| Saigon Central | 2026-08 |              61 |              155 |          39.4 |
+| Saigon Central | 2026-09 |              67 |              150 |          44.7 |
+| Saigon Central | 2026-10 |              60 |              155 |          38.7 |
+| Saigon Central | 2026-11 |               7 |               85 |           8.2 |
++----------------+---------+-----------------+------------------+---------------+
 ```
 
 ## Q4 – Which guests have stayed at every hotel of the group?
@@ -208,8 +240,11 @@ Division expanded with the basic operators: `R ÷ S = π guest_id (R) − π gue
 **Result**
 
 ```
-<img width="131" height="41" alt="image" src="https://github.com/user-attachments/assets/202462e5-c0fe-4366-ae62-4ec49c64405a" />
-
++----------+---------------+
+| guest_id | name          |
++----------+---------------+
+|        1 | Nguyen Van An |
++----------+---------------+
 ```
 
 ## Q5 – Which service produces the most revenue per occupied room?
@@ -236,8 +271,11 @@ WHERE revenue / occupied_room_nights =
 **Result**
 
 ```
-<img width="415" height="30" alt="image" src="https://github.com/user-attachments/assets/8545a0c1-8a59-4766-8a5c-489e5d832d96" />
-
++---------------+--------------+--------------+----------------------+---------------------------+
+| service       | service_type | revenue      | occupied_room_nights | revenue_per_occupied_room |
++---------------+--------------+--------------+----------------------+---------------------------+
+| City Tour Car | TRANSPORT    | 109800000.00 |                   62 |                   1770968 |
++---------------+--------------+--------------+----------------------+---------------------------+
 ```
 
 ## Q6 – [multi-table join, 7 tables] For every completed stay: who stayed, where,
@@ -276,8 +314,30 @@ Answer := π stay_id, Guest.name, Hotel.name, req_name, room_number, got_name, c
 **Result**
 
 ```
-<img width="595" height="271" alt="image" src="https://github.com/user-attachments/assets/b639a526-c87e-461d-9ceb-fc1939436e6d" />
-
++---------+----------------+-------------------+-------------------+-------------+-------------------+---------------------+---------------------+
+| stay_id | guest          | hotel             | requested_type    | room_number | assigned_type     | check_in            | check_out           |
++---------+----------------+-------------------+-------------------+-------------+-------------------+---------------------+---------------------+
+|      86 | Dinh Cong Son  | Saigon Central    | Standard Double   | 101         | Standard Double   | 2026-01-02 14:00:00 | 2026-01-05 11:00:00 |
+|     294 | Maria Garcia   | Saigon Riverside  | Family Room       | 201         | Family Room       | 2026-01-02 14:15:00 | 2026-01-05 11:30:00 |
+|     240 | Le Hoang Cuong | Saigon Riverside  | Standard Twin     | 101         | Standard Twin     | 2026-01-02 14:45:00 | 2026-01-06 11:00:00 |
+|     163 | Kim Min Jun    | Saigon Central    | Superior Twin     | 102         | Superior Twin     | 2026-01-05 14:30:00 | 2026-01-08 11:30:00 |
+|      95 | Duong Thi Mai  | Saigon Central    | Junior Suite      | 202         | Junior Suite      | 2026-01-06 14:15:00 | 2026-01-10 11:30:00 |
+|     319 | Phan Thi Oanh  | Saigon Riverside  | Family Room       | 201         | Family Room       | 2026-01-06 14:45:00 | 2026-01-11 11:30:00 |
+|      31 | Nguyen Van An  | Hanoi Old Quarter | Deluxe Twin       | 102         | Deluxe Twin       | 2026-01-07 14:00:00 | 2026-01-09 11:00:00 |
+|      55 | Maria Garcia   | Saigon Central    | Standard Double   | 101         | Standard Double   | 2026-01-07 14:00:00 | 2026-01-08 11:00:00 |
+|     338 | Lam Gia Viet   | Saigon Riverside  | Deluxe Double     | 102         | Deluxe Double     | 2026-01-08 14:00:00 | 2026-01-13 11:00:00 |
+|     389 | John Smith     | Saigon Riverside  | Standard Twin     | 101         | Standard Twin     | 2026-01-10 14:15:00 | 2026-01-13 11:30:00 |
+|     211 | Maria Garcia   | Saigon Central    | Junior Suite      | 202         | Junior Suite      | 2026-01-10 14:45:00 | 2026-01-15 11:00:00 |
+|      48 | Tran Thi Binh  | Nha Trang Seaside | Villa             | 201         | Villa             | 2026-01-11 14:45:00 | 2026-01-14 11:30:00 |
+|     199 | Le Hoang Cuong | Saigon Central    | Superior Twin     | 102         | Superior Twin     | 2026-01-13 14:45:00 | 2026-01-18 11:00:00 |
+|     112 | Dinh Cong Son  | Saigon Central    | Deluxe Ocean View | 201         | Deluxe Ocean View | 2026-01-14 14:00:00 | 2026-01-16 11:30:00 |
+|     220 | Phan Thi Oanh  | Saigon Central    | Standard Double   | 101         | Standard Double   | 2026-01-14 14:15:00 | 2026-01-17 11:30:00 |
+|     352 | Dinh Cong Son  | Saigon Riverside  | Family Room       | 201         | Family Room       | 2026-01-14 14:15:00 | 2026-01-18 11:00:00 |
+|     191 | Mai Thi Thao   | Saigon Central    | Junior Suite      | 202         | Junior Suite      | 2026-01-16 14:30:00 | 2026-01-19 11:30:00 |
+|      90 | Ha Thi Uyen    | Saigon Central    | Studio Apartment  | 301         | Studio Apartment  | 2026-01-18 14:15:00 | 2026-01-22 11:30:00 |
+|     169 | Vu Quang Huy   | Saigon Central    | Junior Suite      | 202         | Junior Suite      | 2026-01-19 14:00:00 | 2026-01-22 11:00:00 |
+|     216 | Sato Haruki    | Saigon Central    | Deluxe Ocean View | 201         | Deluxe Ocean View | 2026-01-19 14:00:00 | 2026-01-22 11:00:00 |
++---------+----------------+-------------------+-------------------+-------------+-------------------+---------------------+---------------------+
 ```
 
 ## Q7 – [outer join] Which rooms of the group have never hosted a stay?
@@ -299,8 +359,29 @@ ORDER BY h.name, r.room_number;
 **Result**
 
 ```
-<img width="364" height="291" alt="image" src="https://github.com/user-attachments/assets/9c4153ee-33d2-4b4f-9085-36399b329e32" />
-
++-------------------+-------------+--------------------+-----------+-----------------+
+| hotel             | room_number | room_type          | status    | number_of_stays |
++-------------------+-------------+--------------------+-----------+-----------------+
+| Can Tho Mekong    | 101         | Villa              | AVAILABLE |               0 |
+| Can Tho Mekong    | 201         | Deluxe Double      | AVAILABLE |               0 |
+| Da Lat Pine Hill  | 102         | Studio Apartment   | AVAILABLE |               0 |
+| Da Lat Pine Hill  | 201         | Standard Double    | AVAILABLE |               0 |
+| Da Nang Bay View  | 101         | Deluxe Twin        | AVAILABLE |               0 |
+| Da Nang Bay View  | 102         | Triple Room        | AVAILABLE |               0 |
+| Da Nang Bay View  | 301         | Superior Double    | AVAILABLE |               0 |
+| Da Nang Beach     | 301         | Standard Twin      | AVAILABLE |               0 |
+| Hanoi Old Quarter | 101         | Superior Double    | AVAILABLE |               0 |
+| Hanoi Old Quarter | 301         | Standard Single    | AVAILABLE |               0 |
+| Hanoi West Lake   | 102         | Deluxe Ocean View  | AVAILABLE |               0 |
+| Hoi An Heritage   | 102         | Junior Suite       | AVAILABLE |               0 |
+| Hoi An Heritage   | 201         | Studio Apartment   | AVAILABLE |               0 |
+| Hoi An Heritage   | 202         | Standard Double    | AVAILABLE |               0 |
+| Hue Imperial      | 101         | Executive Suite    | AVAILABLE |               0 |
+| Nha Trang Island  | 101         | Triple Room        | AVAILABLE |               0 |
+| Nha Trang Island  | 102         | Presidential Suite | AVAILABLE |               0 |
+| Nha Trang Seaside | 101         | Family Room        | AVAILABLE |               0 |
+| Nha Trang Seaside | 102         | Executive Suite    | AVAILABLE |               0 |
+... (9 more lines, truncated here)
 ```
 
 ## Q8 – [GROUP BY + HAVING] Which hotels earned more than 8,000,000 VND from
@@ -323,8 +404,18 @@ ORDER BY service_revenue DESC;
 **Result**
 
 ```
-<img width="318" height="116" alt="image" src="https://github.com/user-attachments/assets/409281b9-f35e-4a86-bf03-24c9ba41bce3" />
-
++-------------------+-------------------+-----------------+----------------+
+| hotel             | consumption_lines | service_revenue | avg_line_value |
++-------------------+-------------------+-----------------+----------------+
+| Saigon Central    |               420 |    242420000.00 |         577190 |
+| Saigon Riverside  |               443 |    241145000.00 |         544345 |
+| Hanoi West Lake   |                18 |     10510000.00 |         583889 |
+| Nha Trang Seaside |                20 |     10490000.00 |         524500 |
+| Can Tho Mekong    |                13 |      9170000.00 |         705385 |
+| Vung Tau Coast    |                11 |      8600000.00 |         781818 |
+| Hoi An Heritage   |                14 |      8465000.00 |         604643 |
+| Phu Quoc Resort   |                21 |      8340000.00 |         397143 |
++-------------------+-------------------+-----------------+----------------+
 ```
 
 ## Q9 – [nested query with IN] Which guests have used a laundry service during a stay?
@@ -354,8 +445,29 @@ Answer  := π guest_id, name ( Guest ⋈ Users )
 **Result**
 
 ```
-<img width="127" height="287" alt="image" src="https://github.com/user-attachments/assets/cc001abf-3e2c-4043-8cdf-61313c2c4970" />
-
++----------+----------------+
+| guest_id | name           |
++----------+----------------+
+|        8 | Bui Anh Khoa   |
+|        7 | Dang Thu Ha    |
+|       16 | Dinh Cong Son  |
+|        9 | Do Thi Lan     |
+|       11 | Duong Thi Mai  |
+|       22 | Emily Johnson  |
+|       19 | Ha Thi Uyen    |
+|        5 | Hoang Thi Em   |
+|       21 | John Smith     |
+|       23 | Kim Min Jun    |
+|       20 | Lam Gia Viet   |
+|        3 | Le Hoang Cuong |
+|       12 | Ly Quoc Nam    |
+|       17 | Mai Thi Thao   |
+|       25 | Maria Garcia   |
+|       10 | Ngo Van Long   |
+|        1 | Nguyen Van An  |
+|        4 | Pham Minh Duc  |
+|       13 | Phan Thi Oanh  |
+... (7 more lines, truncated here)
 ```
 
 ## Q10 – Which guests either stayed in a suite/villa or used a spa service?
@@ -393,8 +505,28 @@ Union is a native operator of the algebra and removes duplicates, so a guest sat
 **Result**
 
 ```
-<img width="125" height="284" alt="image" src="https://github.com/user-attachments/assets/e9023c07-29ff-49ce-b07a-e174f7a6ee16" />
-
++----------+----------------+
+| guest_id | name           |
++----------+----------------+
+|        8 | Bui Anh Khoa   |
+|        7 | Dang Thu Ha    |
+|       16 | Dinh Cong Son  |
+|        9 | Do Thi Lan     |
+|       11 | Duong Thi Mai  |
+|       22 | Emily Johnson  |
+|       19 | Ha Thi Uyen    |
+|        5 | Hoang Thi Em   |
+|       21 | John Smith     |
+|       23 | Kim Min Jun    |
+|       20 | Lam Gia Viet   |
+|        3 | Le Hoang Cuong |
+|       12 | Ly Quoc Nam    |
+|       17 | Mai Thi Thao   |
+|       25 | Maria Garcia   |
+|       10 | Ngo Van Long   |
+|        1 | Nguyen Van An  |
+|        4 | Pham Minh Duc  |
+|       13 | Phan Thi Oanh  |
 ... (7 more lines, truncated here)
 ```
 
@@ -422,8 +554,28 @@ ORDER BY balance_due DESC, i.invoice_id;
 **Result**
 
 ```
-<img width="413" height="258" alt="image" src="https://github.com/user-attachments/assets/e9532816-a1d2-4ade-a2bf-07d70fed2bb5" />
-
++------------+----------------+------------+---------+--------------+-------------+-------------+
+| invoice_id | guest          | issue_date | status  | total_billed | total_paid  | balance_due |
++------------+----------------+------------+---------+--------------+-------------+-------------+
+|        307 | Duong Thi Mai  | 2026-09-18 | UNPAID  |  21610000.00 |        0.00 | 21610000.00 |
+|         15 | Tran Thi Binh  | 2026-08-19 | PARTIAL |  40870000.00 | 20435000.00 | 20435000.00 |
+|        274 | Duong Thi Mai  | 2026-08-24 | PARTIAL |  34000000.00 | 17000000.00 | 17000000.00 |
+|         90 | Maria Garcia   | 2026-02-25 | UNPAID  |  16665000.00 |        0.00 | 16665000.00 |
+|        239 | Dang Thu Ha    | 2026-06-29 | UNPAID  |  15480000.00 |        0.00 | 15480000.00 |
+|        268 | Sato Haruki    | 2026-05-05 | UNPAID  |  13900000.00 |        0.00 | 13900000.00 |
+|        374 | Maria Garcia   | 2026-10-04 | UNPAID  |  12985000.00 |        0.00 | 12985000.00 |
+|        387 | Lam Gia Viet   | 2026-02-19 | PARTIAL |  24980000.00 | 12490000.00 | 12490000.00 |
+|        340 | Do Thi Lan     | 2026-08-21 | UNPAID  |  12305000.00 |        0.00 | 12305000.00 |
+|        394 | Bui Anh Khoa   | 2026-09-16 | UNPAID  |  12055000.00 |        0.00 | 12055000.00 |
+|        123 | Sato Haruki    | 2026-09-08 | UNPAID  |  12050000.00 |        0.00 | 12050000.00 |
+|        390 | Vo Thi Quynh   | 2026-04-26 | UNPAID  |  11650000.00 |        0.00 | 11650000.00 |
+|        353 | Ly Quoc Nam    | 2026-06-07 | PARTIAL |  23190000.00 | 11595000.00 | 11595000.00 |
+|        127 | Duong Thi Mai  | 2026-06-17 | UNPAID  |  11350000.00 |        0.00 | 11350000.00 |
+|        388 | Ly Quoc Nam    | 2026-08-23 | UNPAID  |  11050000.00 |        0.00 | 11050000.00 |
+|         33 | Tran Thi Binh  | 2026-06-24 | UNPAID  |  10760000.00 |        0.00 | 10760000.00 |
+|        221 | Emily Johnson  | 2026-09-27 | UNPAID  |  10600000.00 |        0.00 | 10600000.00 |
+|        269 | Vo Thi Quynh   | 2026-04-07 | PARTIAL |  21125000.00 | 10562000.00 | 10563000.00 |
+|        224 | Le Hoang Cuong | 2026-10-03 | UNPAID  |  10320000.00 |        0.00 | 10320000.00 |
 ... (120 more lines, truncated here)
 ```
 
@@ -444,8 +596,28 @@ ORDER BY h.name, jp.level DESC, e.name;
 **Result**
 
 ```
-<img width="440" height="260" alt="image" src="https://github.com/user-attachments/assets/f7e1545d-b660-42e3-bdda-21bf73600863" />
-
++-------------------+---------------------------+-----------------+---------+---------------------------+
+| hotel             | staff                     | position        | shift   | supervisor                |
++-------------------+---------------------------+-----------------+---------+---------------------------+
+| Can Tho Mekong    | Manager Can Tho Mekong    | General Manager | DAY     | NULL                      |
+| Can Tho Mekong    | Staff 14 Thu              | Room Attendant  | NIGHT   | Manager Can Tho Mekong    |
+| Da Lat Pine Hill  | Manager Da Lat Pine Hill  | General Manager | DAY     | NULL                      |
+| Da Lat Pine Hill  | Staff 10 Linh             | Room Attendant  | EVENING | Manager Da Lat Pine Hill  |
+| Da Nang Bay View  | Manager Da Nang Bay View  | General Manager | DAY     | NULL                      |
+| Da Nang Bay View  | Staff 06 Tuan             | Room Attendant  | DAY     | Manager Da Nang Bay View  |
+| Da Nang Beach     | Manager Da Nang Beach     | General Manager | DAY     | NULL                      |
+| Da Nang Beach     | Staff 05 Linh             | Receptionist    | NIGHT   | Manager Da Nang Beach     |
+| Hanoi Old Quarter | Manager Hanoi Old Quarter | General Manager | DAY     | NULL                      |
+| Hanoi Old Quarter | Staff 03 Nam              | Receptionist    | DAY     | Manager Hanoi Old Quarter |
+| Hanoi West Lake   | Manager Hanoi West Lake   | General Manager | DAY     | NULL                      |
+| Hanoi West Lake   | Staff 04 Thu              | Room Attendant  | EVENING | Manager Hanoi West Lake   |
+| Hoi An Heritage   | Manager Hoi An Heritage   | General Manager | DAY     | NULL                      |
+| Hoi An Heritage   | Staff 07 Hoa              | Receptionist    | EVENING | Manager Hoi An Heritage   |
+| Hue Imperial      | Manager Hue Imperial      | General Manager | DAY     | NULL                      |
+| Hue Imperial      | Staff 11 Tuan             | Receptionist    | NIGHT   | Manager Hue Imperial      |
+| Nha Trang Island  | Manager Nha Trang Island  | General Manager | DAY     | NULL                      |
+| Nha Trang Island  | Staff 09 Thu              | Receptionist    | DAY     | Manager Nha Trang Island  |
+| Nha Trang Seaside | Manager Nha Trang Seaside | General Manager | DAY     | NULL                      |
 ... (12 more lines, truncated here)
 ```
 
@@ -465,8 +637,25 @@ ORDER BY rp.price DESC;
 **Result**
 
 ```
-<img width="335" height="207" alt="image" src="https://github.com/user-attachments/assets/1cfb2ed0-024e-436d-b141-ec2fb98155e4" />
-
++--------------------+-------------+---------------+------------+-------------+
+| room_type          | season_name | nightly_price | base_price | pct_vs_base |
++--------------------+-------------+---------------+------------+-------------+
+| Presidential Suite | Tet peak    |    9600000.00 | 6000000.00 |          60 |
+| Villa              | Tet peak    |    8000000.00 | 5000000.00 |          60 |
+| Executive Suite    | Tet peak    |    4480000.00 | 2800000.00 |          60 |
+| Junior Suite       | Tet peak    |    3200000.00 | 2000000.00 |          60 |
+| Family Room        | Tet peak    |    2560000.00 | 1600000.00 |          60 |
+| Deluxe Ocean View  | Tet peak    |    2240000.00 | 1400000.00 |          60 |
+| Studio Apartment   | Tet peak    |    2080000.00 | 1300000.00 |          60 |
+| Deluxe Twin        | Tet peak    |    1840000.00 | 1150000.00 |          60 |
+| Deluxe Double      | Tet peak    |    1760000.00 | 1100000.00 |          60 |
+| Triple Room        | Tet peak    |    1600000.00 | 1000000.00 |          60 |
+| Superior Twin      | Tet peak    |    1472000.00 |  920000.00 |          60 |
+| Superior Double    | Tet peak    |    1440000.00 |  900000.00 |          60 |
+| Standard Twin      | Tet peak    |    1248000.00 |  780000.00 |          60 |
+| Standard Double    | Tet peak    |    1200000.00 |  750000.00 |          60 |
+| Standard Single    | Tet peak    |     960000.00 |  600000.00 |          60 |
++--------------------+-------------+---------------+------------+-------------+
 ```
 
 ## Q14 – [report screen: aggregate per month] Money actually received per month and per
@@ -489,7 +678,27 @@ ORDER BY month, hotel, p.method;
 **Result**
 
 ```
-<img width="316" height="259" alt="image" src="https://github.com/user-attachments/assets/5534fb6a-9e91-4176-9a10-d5ac70b93db9" />
-
++---------+-------------------+----------+----------+-----------------+
+| month   | hotel             | method   | payments | amount_received |
++---------+-------------------+----------+----------+-----------------+
+| 2026-01 | Da Lat Pine Hill  | TRANSFER |        1 |      3221000.00 |
+| 2026-01 | Hanoi Old Quarter | CASH     |        1 |      2456000.00 |
+| 2026-01 | Hue Imperial      | CARD     |        1 |      6545000.00 |
+| 2026-01 | Nha Trang Seaside | TRANSFER |        1 |     15410000.00 |
+| 2026-01 | Saigon Central    | CARD     |        5 |      6890000.00 |
+| 2026-01 | Saigon Central    | CASH     |        7 |     27730000.00 |
+| 2026-01 | Saigon Central    | EWALLET  |        3 |     12944000.00 |
+| 2026-01 | Saigon Central    | TRANSFER |        6 |     33261000.00 |
+| 2026-01 | Saigon Riverside  | CARD     |        1 |      5244000.00 |
+| 2026-01 | Saigon Riverside  | CASH     |        5 |     42228000.00 |
+| 2026-01 | Saigon Riverside  | EWALLET  |        1 |      6330000.00 |
+| 2026-01 | Saigon Riverside  | TRANSFER |        5 |     17412000.00 |
+| 2026-02 | Hanoi Old Quarter | CARD     |        1 |      3055000.00 |
+| 2026-02 | Nha Trang Island  | CARD     |        1 |      3135000.00 |
+| 2026-02 | Phu Quoc Resort   | TRANSFER |        1 |      4075000.00 |
+| 2026-02 | Saigon Central    | CARD     |        2 |      3778000.00 |
+| 2026-02 | Saigon Central    | CASH     |        2 |     12342000.00 |
+| 2026-02 | Saigon Central    | EWALLET  |        4 |     19576000.00 |
+| 2026-02 | Saigon Central    | TRANSFER |        6 |     27650000.00 |
 ... (122 more lines, truncated here)
 ```
