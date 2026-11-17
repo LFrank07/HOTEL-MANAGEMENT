@@ -161,15 +161,14 @@ CREATE TABLE payment (
 
 ### SQL Query
 
-This folder contains the SQL scripts and query documentation for the Hotel Management project.
+The `Query/` folder contains the SQL scripts and documentation for the Hotel Management System.
 
-**Contents:**
 - Database schema and sample data
 - 14 SQL queries (Q1–Q14)
 - DML operations and transactions
-- Constraint tests
+- Constraint testing
 - SQL query report
 
-See the [Query folder](./Query/) for detailed documentation and SQL scripts.
+See the [Query folder](./Query/) for details.
 
-**Note:** `01_schema.sql` is intended for testing and should not be executed against the shared team database without approval.
+**Note:** `01_schema.sql` is for testing only. Do not run it on the shared database without approval.
