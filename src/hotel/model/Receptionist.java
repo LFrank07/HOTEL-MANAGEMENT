@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 package hotel.model;
 
 public class Receptionist extends Staff {
@@ -8,11 +7,6 @@ public class Receptionist extends Staff {
         super();
     }
 
-=======
-public class Receptionist extends Staff {
-    private String shift;
-
->>>>>>> aa305596d259241745c5cf2032dd3d663feed3f8
     public Receptionist(String name, long staffId, String shift) {
         super(name, staffId);
         this.shift = shift;
@@ -25,8 +19,4 @@ public class Receptionist extends Staff {
     public void setShift(String shift) {
         this.shift = shift;
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> aa305596d259241745c5cf2032dd3d663feed3f8

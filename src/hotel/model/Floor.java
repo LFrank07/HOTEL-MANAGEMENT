@@ -13,10 +13,6 @@ public class Floor {
 
     public Long getFloorId() { return floorId; }
     public void setFloorId(Long floorId) { this.floorId = floorId; }
-<<<<<<< HEAD
-=======
-
->>>>>>> aa305596d259241745c5cf2032dd3d663feed3f8
     public Integer getFloorNumber() { return floorNumber; }
     public void setFloorNumber(Integer floorNumber) { this.floorNumber = floorNumber; }
 }
