@@ -1,24 +1,8 @@
 package hotel.model;
 
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +12,8 @@ public class HotelManagementUI {
     private final List<Room> rooms = new ArrayList<>();
     private final List<RoomType> roomTypes = new ArrayList<>();
     private final DefaultTableModel tableModel = new DefaultTableModel(
-            new Object[]{"Mã đặt phòng", "Khách hàng", "Điện thoại", "Loại phòng",
-                    "Phòng", "Ngày nhận", "Ngày trả", "Trạng thái"}, 0) {
+            new Object[]{"Reservation ID", "Guest Name", "Phone", "Room Type",
+                    "Room", "Check-in", "Check-out", "Status"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
             return false;
@@ -39,7 +23,7 @@ public class HotelManagementUI {
     private long nextReservationId = 1;
     private long nextGuestId = 1;
 
-    private HotelManagementUI() {
+    public HotelManagementUI() {
         seedRoomInventory();
         createWindow();
         refreshTable();
@@ -49,7 +33,6 @@ public class HotelManagementUI {
         addRoomType(1L, "Standard", 2);
         addRoomType(2L, "Deluxe", 2);
         addRoomType(3L, "Family", 4);
-
         addRoom(101L, "101", "Available", roomTypes.get(0));
         addRoom(102L, "102", "Available", roomTypes.get(0));
         addRoom(201L, "201", "Available", roomTypes.get(1));
@@ -75,7 +58,7 @@ public class HotelManagementUI {
     }
 
     private void createWindow() {
-        JFrame frame = new JFrame("Quản lý khách sạn");
+        JFrame frame = new JFrame("Hotel Management");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setMinimumSize(new Dimension(980, 560));
         frame.setLocationRelativeTo(null);
@@ -84,12 +67,13 @@ public class HotelManagementUI {
         root.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
         root.setBackground(new Color(245, 247, 250));
 
-        JLabel title = new JLabel("QUẢN LÝ ĐẶT PHÒNG");
+        JLabel title = new JLabel("RESERVATION MANAGEMENT");
         title.setFont(new Font("SansSerif", Font.BOLD, 22));
         title.setForeground(new Color(29, 48, 71));
 
-        JLabel subtitle = new JLabel("Tạo và theo dõi thông tin đặt phòng · dữ liệu demo, chưa lưu vào cơ sở dữ liệu");
+        JLabel subtitle = new JLabel("Create and track reservation details · Demo data running in memory");
         subtitle.setForeground(new Color(101, 114, 130));
+
         JPanel heading = new JPanel(new GridLayout(2, 1, 0, 4));
         heading.setOpaque(false);
         heading.add(title);
@@ -105,9 +89,10 @@ public class HotelManagementUI {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(222, 227, 233)));
         root.add(scrollPane, BorderLayout.CENTER);
 
-        JButton addButton = createButton("＋ Thêm đặt phòng", new Color(34, 112, 90));
-        JButton editButton = createButton("Sửa", new Color(54, 91, 135));
-        JButton deleteButton = createButton("Xóa", new Color(174, 66, 66));
+        JButton addButton = createButton("＋ Add Reservation", new Color(34, 112, 90));
+        JButton editButton = createButton("Edit", new Color(54, 91, 135));
+        JButton deleteButton = createButton("Delete", new Color(174, 66, 66));
+
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
         actions.add(addButton);
@@ -118,6 +103,7 @@ public class HotelManagementUI {
         addButton.addActionListener(event -> showReservationDialog(null));
         editButton.addActionListener(event -> editSelectedReservation());
         deleteButton.addActionListener(event -> deleteSelectedReservation());
+
         reservationTable.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent event) {
@@ -142,25 +128,23 @@ public class HotelManagementUI {
 
     private void showReservationDialog(Reservation reservation) {
         boolean isNew = reservation == null;
-        JTextField guestName = new JTextField(isNew || reservation.getGuest() == null
-                ? "" : reservation.getGuest().getName(), 18);
-        JTextField phone = new JTextField(isNew || reservation.getGuest() == null
-                ? "" : reservation.getGuest().getPhone(), 18);
-        JTextField startDate = new JTextField(isNew
-                ? LocalDate.now().toString() : reservation.getStartDate().toString(), 18);
-        JTextField endDate = new JTextField(isNew
-                ? LocalDate.now().plusDays(1).toString() : reservation.getEndDate().toString(), 18);
+        JTextField guestName = new JTextField(isNew || reservation.getGuest() == null ? "" : reservation.getGuest().getName(), 18);
+        JTextField phone = new JTextField(isNew || reservation.getGuest() == null ? "" : reservation.getGuest().getPhone(), 18);
+        JTextField startDate = new JTextField(isNew ? LocalDate.now().toString() : reservation.getStartDate().toString(), 18);
+        JTextField endDate = new JTextField(isNew ? LocalDate.now().plusDays(1).toString() : reservation.getEndDate().toString(), 18);
+
         JComboBox<String> roomType = new JComboBox<>();
         for (RoomType type : roomTypes) {
             roomType.addItem(type.getName());
         }
+
         JComboBox<String> roomNumber = new JComboBox<>();
-        roomNumber.addItem("Chưa xếp phòng");
+        roomNumber.addItem("Unassigned");
         for (Room room : rooms) {
             roomNumber.addItem(room.getRoomNumber());
         }
-        JComboBox<String> status = new JComboBox<>(
-                new String[]{"PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"});
+
+        JComboBox<String> status = new JComboBox<>(new String[]{"PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"});
 
         if (!isNew) {
             roomType.setSelectedItem(reservation.getRoomType().getName());
@@ -171,24 +155,24 @@ public class HotelManagementUI {
         }
 
         JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
-        form.add(new JLabel("Tên khách hàng:"));
+        form.add(new JLabel("Guest Name:"));
         form.add(guestName);
-        form.add(new JLabel("Số điện thoại:"));
+        form.add(new JLabel("Phone Number:"));
         form.add(phone);
-        form.add(new JLabel("Loại phòng:"));
+        form.add(new JLabel("Room Type:"));
         form.add(roomType);
-        form.add(new JLabel("Phòng (không bắt buộc):"));
+        form.add(new JLabel("Room (Optional):"));
         form.add(roomNumber);
-        form.add(new JLabel("Ngày nhận (yyyy-MM-dd):"));
+        form.add(new JLabel("Check-in (yyyy-MM-dd):"));
         form.add(startDate);
-        form.add(new JLabel("Ngày trả (yyyy-MM-dd):"));
+        form.add(new JLabel("Check-out (yyyy-MM-dd):"));
         form.add(endDate);
-        form.add(new JLabel("Trạng thái:"));
+        form.add(new JLabel("Status:"));
         form.add(status);
 
         while (true) {
             int result = JOptionPane.showConfirmDialog(null, form,
-                    isNew ? "Thêm đặt phòng" : "Sửa đặt phòng",
+                    isNew ? "Add Reservation" : "Edit Reservation",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
             if (result != JOptionPane.OK_OPTION) {
                 return;
@@ -197,32 +181,30 @@ public class HotelManagementUI {
             try {
                 String name = guestName.getText().trim();
                 if (name.isEmpty()) {
-                    throw new IllegalArgumentException("Vui lòng nhập tên khách hàng.");
+                    throw new IllegalArgumentException("Please enter the guest's name.");
                 }
                 LocalDate checkIn = LocalDate.parse(startDate.getText().trim());
                 LocalDate checkOut = LocalDate.parse(endDate.getText().trim());
                 if (!checkOut.isAfter(checkIn)) {
-                    throw new IllegalArgumentException("Ngày trả phải sau ngày nhận.");
+                    throw new IllegalArgumentException("Check-out date must be after the check-in date.");
                 }
 
                 RoomType selectedType = findRoomType((String) roomType.getSelectedItem());
                 String selectedRoomNumber = (String) roomNumber.getSelectedItem();
-                Room selectedRoom = selectedRoomNumber == null
-                        || "Chưa xếp phòng".equals(selectedRoomNumber)
+                Room selectedRoom = selectedRoomNumber == null || "Unassigned".equals(selectedRoomNumber)
                         ? null : findRoom(selectedRoomNumber);
                 String selectedStatus = (String) status.getSelectedItem();
+
                 if (selectedRoom != null) {
                     if (!selectedType.getRoomtypeId().equals(selectedRoom.getRoomType().getRoomtypeId())) {
-                        throw new IllegalArgumentException("Phòng được chọn không thuộc loại phòng đã chọn.");
+                        throw new IllegalArgumentException("The selected room does not belong to the chosen room type.");
                     }
-                    if (!"CANCELLED".equals(selectedStatus)
-                            && hasRoomConflict(selectedRoom, checkIn, checkOut, reservation)) {
-                        throw new IllegalArgumentException("Phòng đã được đặt trong khoảng thời gian này.");
+                    if (!"CANCELLED".equals(selectedStatus) && hasRoomConflict(selectedRoom, checkIn, checkOut, reservation)) {
+                        throw new IllegalArgumentException("The room is already booked during this time period.");
                     }
                 }
 
-                Guest guest = isNew || reservation.getGuest() == null
-                        ? new Guest() : reservation.getGuest();
+                Guest guest = isNew || reservation.getGuest() == null ? new Guest() : reservation.getGuest();
                 if (guest.getGuestId() == null) {
                     guest.setGuestId(nextGuestId++);
                 }
@@ -230,8 +212,7 @@ public class HotelManagementUI {
                 guest.setPhone(phone.getText().trim());
 
                 if (isNew) {
-                    reservation = new Reservation(nextReservationId++, checkIn, checkOut,
-                            selectedStatus, guest, selectedType);
+                    reservation = new Reservation(nextReservationId++, checkIn, checkOut, selectedStatus, guest, selectedType);
                     reservations.add(reservation);
                 } else {
                     reservation.setStartDate(checkIn);
@@ -245,11 +226,12 @@ public class HotelManagementUI {
                 if (selectedRoom != null) {
                     reservation.addAssignedRoom(selectedRoom);
                 }
+
                 refreshTable();
                 return;
             } catch (IllegalArgumentException exception) {
                 JOptionPane.showMessageDialog(null, exception.getMessage(),
-                        "Thông tin chưa hợp lệ", JOptionPane.WARNING_MESSAGE);
+                        "Invalid Information", JOptionPane.WARNING_MESSAGE);
             }
         }
     }
@@ -260,7 +242,7 @@ public class HotelManagementUI {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Vui lòng chọn loại phòng.");
+        throw new IllegalArgumentException("Please select a room type.");
     }
 
     private Room findRoom(String number) {
@@ -269,17 +251,15 @@ public class HotelManagementUI {
                 return room;
             }
         }
-        throw new IllegalArgumentException("Không tìm thấy phòng đã chọn.");
+        throw new IllegalArgumentException("Selected room not found.");
     }
 
-    private boolean hasRoomConflict(Room room, LocalDate checkIn, LocalDate checkOut,
-                                    Reservation editedReservation) {
+    private boolean hasRoomConflict(Room room, LocalDate checkIn, LocalDate checkOut, Reservation editedReservation) {
         for (Reservation existing : reservations) {
             if (existing == editedReservation || "CANCELLED".equals(existing.getStatus())) {
                 continue;
             }
-            if (!existing.getStartDate().isBefore(checkOut)
-                    || !existing.getEndDate().isAfter(checkIn)) {
+            if (!existing.getStartDate().isBefore(checkOut) || !existing.getEndDate().isAfter(checkIn)) {
                 continue;
             }
             for (Room assignedRoom : existing.getAssignedRooms()) {
@@ -307,8 +287,8 @@ public class HotelManagementUI {
             return;
         }
         int modelRow = reservationTable.convertRowIndexToModel(selectedRow);
-        int result = JOptionPane.showConfirmDialog(null, "Xóa đặt phòng đang chọn?",
-                "Xác nhận", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        int result = JOptionPane.showConfirmDialog(null, "Delete the selected reservation?",
+                "Confirmation", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (result == JOptionPane.YES_OPTION) {
             reservations.remove(modelRow);
             refreshTable();
@@ -316,8 +296,8 @@ public class HotelManagementUI {
     }
 
     private void showSelectReservationMessage() {
-        JOptionPane.showMessageDialog(null, "Vui lòng chọn một đặt phòng trong bảng.",
-                "Chưa chọn đặt phòng", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(null, "Please select a reservation in the table.",
+                "No Reservation Selected", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void refreshTable() {
@@ -326,7 +306,7 @@ public class HotelManagementUI {
             Guest guest = reservation.getGuest();
             RoomType type = reservation.getRoomType();
             String assignedRoom = reservation.getAssignedRooms().isEmpty()
-                    ? "Chưa xếp" : reservation.getAssignedRooms().get(0).getRoomNumber();
+                    ? "Unassigned" : reservation.getAssignedRooms().get(0).getRoomNumber();
             tableModel.addRow(new Object[]{
                     reservation.getReservationId(),
                     guest == null ? "" : guest.getName(),

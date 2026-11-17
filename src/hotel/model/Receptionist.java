@@ -1,5 +1,11 @@
+package hotel.model;
+
 public class Receptionist extends Staff {
     private String shift;
+
+    public Receptionist() {
+        super();
+    }
 
     public Receptionist(String name, long staffId, String shift) {
         super(name, staffId);

@@ -1,5 +1,11 @@
+package hotel.model;
+
 public class Housekeeper extends Staff {
     private String roomsAssigned;
+
+    public Housekeeper() {
+        super();
+    }
 
     public Housekeeper(String name, long staffId, String roomsAssigned) {
         super(name, staffId);

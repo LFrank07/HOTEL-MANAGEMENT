@@ -13,7 +13,6 @@ public class Floor {
 
     public Long getFloorId() { return floorId; }
     public void setFloorId(Long floorId) { this.floorId = floorId; }
-
     public Integer getFloorNumber() { return floorNumber; }
     public void setFloorNumber(Integer floorNumber) { this.floorNumber = floorNumber; }
 }

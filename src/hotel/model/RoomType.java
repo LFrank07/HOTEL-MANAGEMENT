@@ -1,6 +1,5 @@
 package hotel.model;
 
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,13 +13,16 @@ public class RoomType {
 
     public Long getRoomtypeId() { return roomtypeId; }
     public void setRoomtypeId(Long roomtypeId) { this.roomtypeId = roomtypeId; }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-
     public Integer getCapacity() { return capacity; }
     public void setCapacity(Integer capacity) { this.capacity = capacity; }
-
     public List<RatePlan> getRatePlans() { return ratePlans; }
     public void setRatePlans(List<RatePlan> ratePlans) { this.ratePlans = ratePlans; }
+
+    public void addRatePlan(RatePlan ratePlan) {
+        if (ratePlan != null && !ratePlans.contains(ratePlan)) {
+            ratePlans.add(ratePlan);
+        }
+    }
 }
