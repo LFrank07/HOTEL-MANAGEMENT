@@ -158,3 +158,18 @@ CREATE TABLE payment (
     paid_date DATE NOT NULL,
     method VARCHAR(50) NOT NULL
 );
+
+### SQL Query
+
+This folder contains the SQL scripts and query documentation for the Hotel Management project.
+
+**Contents:**
+- Database schema and sample data
+- 14 SQL queries (Q1–Q14)
+- DML operations and transactions
+- Constraint tests
+- SQL query report
+
+See the [Query folder](./Query/) for detailed documentation and SQL scripts.
+
+**Note:** `01_schema.sql` is intended for testing and should not be executed against the shared team database without approval.
