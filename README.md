@@ -158,7 +158,7 @@ CREATE TABLE payment (
     paid_date DATE NOT NULL,
     method VARCHAR(50) NOT NULL
 );
-
+```
 ### SQL Query
 
 The `Query/` folder contains the SQL scripts and documentation for the Hotel Management System.
