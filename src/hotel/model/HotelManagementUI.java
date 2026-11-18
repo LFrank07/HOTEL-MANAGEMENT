@@ -4,14 +4,14 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 public class HotelManagementUI {
-    private final List<Reservation> reservations = new ArrayList<>();
-    private final List<Room> rooms = new ArrayList<>();
-    private final List<RoomType> roomTypes = new ArrayList<>();
+
     private final DefaultTableModel tableModel = new DefaultTableModel(
             new Object[]{"Reservation ID", "Guest Name", "Phone", "Room Type",
                     "Room", "Check-in", "Check-out", "Status"}, 0) {
@@ -20,15 +20,14 @@ public class HotelManagementUI {
             return false;
         }
     };
+
     private final JTable reservationTable = new JTable(tableModel);
-    private long nextReservationId = 1;
-    private long nextGuestId = 1;
 
     public HotelManagementUI() {
         createWindow();
         refreshTable();
     }
-    
+
     private void createWindow() {
         JFrame frame = new JFrame("Hotel Management");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -40,10 +39,10 @@ public class HotelManagementUI {
         root.setBackground(new Color(245, 247, 250));
 
         JLabel title = new JLabel("RESERVATION MANAGEMENT");
-        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        title.setFont(new Font("Sans Serif", Font.BOLD, 22));
         title.setForeground(new Color(29, 48, 71));
 
-        JLabel subtitle = new JLabel("Create and track reservation details · Demo data running in memory");
+        JLabel subtitle = new JLabel("Connected to MySQL Database");
         subtitle.setForeground(new Color(101, 114, 130));
 
         JPanel heading = new JPanel(new GridLayout(2, 1, 0, 4));
@@ -54,7 +53,7 @@ public class HotelManagementUI {
 
         reservationTable.setRowHeight(32);
         reservationTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        reservationTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
+        reservationTable.getTableHeader().setFont(new Font("Sans Serif", Font.BOLD, 12));
         reservationTable.setFillsViewportHeight(true);
 
         // Custom Renderer để đổi màu cột Check-out khi đến hạn hoặc quá hạn
@@ -64,30 +63,26 @@ public class HotelManagementUI {
                                                            boolean isSelected, boolean hasFocus,
                                                            int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                
-                // Mặc định font và màu chữ bình thường nếu không được chọn
+
                 if (!isSelected) {
                     c.setForeground(Color.BLACK);
-                    c.setFont(table.getFont());
                 }
+                c.setFont(table.getFont());
 
                 // Cột "Check-out" là cột index số 6
                 if (column == 6 && value != null) {
                     try {
                         LocalDate checkOutDate = LocalDate.parse(value.toString());
                         LocalDate today = LocalDate.now();
-                        
-                        // Lấy trạng thái của dòng hiện tại (cột index số 7)
                         int modelRow = table.convertRowIndexToModel(row);
                         String status = (String) table.getModel().getValueAt(modelRow, 7);
 
-                        // Nếu chưa Cancelled/Completed và ngày hiện tại >= ngày Check-out
                         if (!"CANCELLED".equals(status) && !"COMPLETED".equals(status)) {
                             if (!today.isBefore(checkOutDate)) {
                                 if (!isSelected) {
                                     c.setForeground(new Color(210, 40, 40)); // Màu đỏ nổi bật
                                 }
-                                c.setFont(new Font("SansSerif", Font.BOLD, 12)); // Chữ đậm
+                                c.setFont(new Font("Sans Serif", Font.BOLD, 12));
                             }
                         }
                     } catch (Exception ignored) {
@@ -101,7 +96,7 @@ public class HotelManagementUI {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(222, 227, 233)));
         root.add(scrollPane, BorderLayout.CENTER);
 
-        JButton addButton = createButton("＋ Add Reservation", new Color(34, 112, 90));
+        JButton addButton = createButton("+ Add Reservation", new Color(34, 112, 90));
         JButton editButton = createButton("Edit", new Color(54, 91, 135));
         JButton deleteButton = createButton("Delete", new Color(174, 66, 66));
 
@@ -112,7 +107,7 @@ public class HotelManagementUI {
         actions.add(deleteButton);
         root.add(actions, BorderLayout.SOUTH);
 
-        addButton.addActionListener(event -> showReservationDialog(null));
+        addButton.addActionListener(event -> showReservationDialog(true));
         editButton.addActionListener(event -> editSelectedReservation());
         deleteButton.addActionListener(event -> deleteSelectedReservation());
 
@@ -138,17 +133,16 @@ public class HotelManagementUI {
         return button;
     }
 
-    private void showReservationDialog(Reservation reservation) {
-        boolean isNew = reservation == null;
+    private void showReservationDialog(boolean isNew) {
         JTextField guestName = new JTextField(18);
         JTextField phone = new JTextField(18);
         JTextField startDate = new JTextField(LocalDate.now().toString(), 18);
         JTextField endDate = new JTextField(LocalDate.now().plusDays(1).toString(), 18);
 
         JComboBox<String> roomType = new JComboBox<>();
-        try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection();
-             java.sql.Statement stmt = conn.createStatement();
-             java.sql.ResultSet rs = stmt.executeQuery("SELECT name FROM room_types")) {
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT name FROM room_types")) {
             while (rs.next()) {
                 roomType.addItem(rs.getString("name"));
             }
@@ -157,9 +151,10 @@ public class HotelManagementUI {
         }
 
         JComboBox<String> roomNumber = new JComboBox<>();
-        try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection();
-             java.sql.Statement stmt = conn.createStatement();
-             java.sql.ResultSet rs = stmt.executeQuery("SELECT room_number FROM rooms")) {
+        roomNumber.addItem("Unassigned");
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT room_number FROM rooms")) {
             while (rs.next()) {
                 roomNumber.addItem(rs.getString("room_number"));
             }
@@ -222,14 +217,13 @@ public class HotelManagementUI {
                 String selectedStatus = (String) status.getSelectedItem();
                 String phoneStr = phone.getText().trim();
 
-                try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection()) {
-                    
+                try (Connection conn = DatabaseConnection.getConnection()) {
                     long guestId = -1;
                     String checkGuestSql = "SELECT guest_id FROM guests WHERE name = ? AND phone = ?";
-                    try (java.sql.PreparedStatement pstmt = conn.prepareStatement(checkGuestSql)) {
+                    try (PreparedStatement pstmt = conn.prepareStatement(checkGuestSql)) {
                         pstmt.setString(1, name);
                         pstmt.setString(2, phoneStr);
-                        try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                        try (ResultSet rs = pstmt.executeQuery()) {
                             if (rs.next()) {
                                 guestId = rs.getLong("guest_id");
                             }
@@ -238,11 +232,11 @@ public class HotelManagementUI {
 
                     if (guestId == -1) {
                         String insertGuestSql = "INSERT INTO guests (name, phone) VALUES (?, ?)";
-                        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(insertGuestSql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(insertGuestSql, Statement.RETURN_GENERATED_KEYS)) {
                             pstmt.setString(1, name);
                             pstmt.setString(2, phoneStr);
                             pstmt.executeUpdate();
-                            try (java.sql.ResultSet gk = pstmt.getGeneratedKeys()) {
+                            try (ResultSet gk = pstmt.getGeneratedKeys()) {
                                 if (gk.next()) guestId = gk.getLong(1);
                             }
                         }
@@ -250,9 +244,9 @@ public class HotelManagementUI {
 
                     long roomTypeId = 1;
                     String getRtSql = "SELECT room_type_id FROM room_types WHERE name = ?";
-                    try (java.sql.PreparedStatement pstmt = conn.prepareStatement(getRtSql)) {
+                    try (PreparedStatement pstmt = conn.prepareStatement(getRtSql)) {
                         pstmt.setString(1, selectedRoomType);
-                        try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                        try (ResultSet rs = pstmt.executeQuery()) {
                             if (rs.next()) roomTypeId = rs.getLong("room_type_id");
                         }
                     }
@@ -260,9 +254,9 @@ public class HotelManagementUI {
                     Long roomId = null;
                     if (selectedRoomNumber != null && !"Unassigned".equals(selectedRoomNumber)) {
                         String getRoomSql = "SELECT room_id FROM rooms WHERE room_number = ?";
-                        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(getRoomSql)) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(getRoomSql)) {
                             pstmt.setString(1, selectedRoomNumber);
-                            try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+                            try (ResultSet rs = pstmt.executeQuery()) {
                                 if (rs.next()) roomId = rs.getLong("room_id");
                             }
                         }
@@ -270,10 +264,11 @@ public class HotelManagementUI {
 
                     if (isNew) {
                         String insertResSql = "INSERT INTO reservations (guest_id, room_type_id, room_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?)";
-                        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(insertResSql)) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(insertResSql)) {
                             pstmt.setLong(1, guestId);
                             pstmt.setLong(2, roomTypeId);
-                            if (roomId != null) pstmt.setLong(3, roomId); else pstmt.setNull(3, java.sql.Types.INTEGER);
+                            if (roomId != null) pstmt.setLong(3, roomId);
+                            else pstmt.setNull(3, java.sql.Types.INTEGER);
                             pstmt.setDate(4, java.sql.Date.valueOf(checkIn));
                             pstmt.setDate(5, java.sql.Date.valueOf(checkOut));
                             pstmt.setString(6, selectedStatus);
@@ -284,10 +279,11 @@ public class HotelManagementUI {
                         long resId = (long) reservationTable.getValueAt(selectedRow, 0);
 
                         String updateResSql = "UPDATE reservations SET guest_id = ?, room_type_id = ?, room_id = ?, start_date = ?, end_date = ?, status = ? WHERE reservation_id = ?";
-                        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(updateResSql)) {
+                        try (PreparedStatement pstmt = conn.prepareStatement(updateResSql)) {
                             pstmt.setLong(1, guestId);
                             pstmt.setLong(2, roomTypeId);
-                            if (roomId != null) pstmt.setLong(3, roomId); else pstmt.setNull(3, java.sql.Types.INTEGER);
+                            if (roomId != null) pstmt.setLong(3, roomId);
+                            else pstmt.setNull(3, java.sql.Types.INTEGER);
                             pstmt.setDate(4, java.sql.Date.valueOf(checkIn));
                             pstmt.setDate(5, java.sql.Date.valueOf(checkOut));
                             pstmt.setString(6, selectedStatus);
@@ -299,104 +295,16 @@ public class HotelManagementUI {
 
                 refreshTable();
                 return;
-            } catch (Exception exception) {
-                exception.printStackTrace();
-                JOptionPane.showMessageDialog(null, "Error when saving data from MySQL: " + exception.getMessage(),
-                        "Database Error", JOptionPane.WARNING_MESSAGE);
-            }
-            }
 
-            try {
-                String name = guestName.getText().trim();
-                if (name.isEmpty()) {
-                    throw new IllegalArgumentException("Please enter the guest's name.");
-                }
-                LocalDate checkIn = LocalDate.parse(startDate.getText().trim());
-                LocalDate checkOut = LocalDate.parse(endDate.getText().trim());
-                if (!checkOut.isAfter(checkIn)) {
-                    throw new IllegalArgumentException("Check-out date must be after the check-in date.");
-                }
-
-                RoomType selectedType = findRoomType((String) roomType.getSelectedItem());
-                String selectedRoomNumber = (String) roomNumber.getSelectedItem();
-                Room selectedRoom = selectedRoomNumber == null || "Unassigned".equals(selectedRoomNumber)
-                        ? null : findRoom(selectedRoomNumber);
-                String selectedStatus = (String) status.getSelectedItem();
-
-                if (selectedRoom != null) {
-                    if (!selectedType.getRoomtypeId().equals(selectedRoom.getRoomType().getRoomtypeId())) {
-                        throw new IllegalArgumentException("The selected room does not belong to the chosen room type.");
-                    }
-                    if (!"CANCELLED".equals(selectedStatus) && hasRoomConflict(selectedRoom, checkIn, checkOut, reservation)) {
-                        throw new IllegalArgumentException("The room is already booked during this time period.");
-                    }
-                }
-
-                Guest guest = isNew || reservation.getGuest() == null ? new Guest() : reservation.getGuest();
-                if (guest.getGuestId() == null) {
-                    guest.setGuestId(nextGuestId++);
-                }
-                guest.setName(name);
-                guest.setPhone(phone.getText().trim());
-
-                if (isNew) {
-                    reservation = new Reservation(nextReservationId++, checkIn, checkOut, selectedStatus, guest, selectedType);
-                    reservations.add(reservation);
-                } else {
-                    reservation.setStartDate(checkIn);
-                    reservation.setEndDate(checkOut);
-                    reservation.setStatus(selectedStatus);
-                    reservation.setGuest(guest);
-                    reservation.setRoomType(selectedType);
-                    reservation.getAssignedRooms().clear();
-                }
-
-                if (selectedRoom != null) {
-                    reservation.addAssignedRoom(selectedRoom);
-                }
-
-                refreshTable();
-                return;
             } catch (IllegalArgumentException exception) {
                 JOptionPane.showMessageDialog(null, exception.getMessage(),
                         "Invalid Information", JOptionPane.WARNING_MESSAGE);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error when saving data to MySQL: " + exception.getMessage(),
+                        "Database Error", JOptionPane.WARNING_MESSAGE);
             }
         }
-    }
-
-    private RoomType findRoomType(String name) {
-        for (RoomType type : roomTypes) {
-            if (type.getName().equals(name)) {
-                return type;
-            }
-        }
-        throw new IllegalArgumentException("Please select a room type.");
-    }
-
-    private Room findRoom(String number) {
-        for (Room room : rooms) {
-            if (room.getRoomNumber().equals(number)) {
-                return room;
-            }
-        }
-        throw new IllegalArgumentException("Selected room not found.");
-    }
-
-    private boolean hasRoomConflict(Room room, LocalDate checkIn, LocalDate checkOut, Reservation editedReservation) {
-        for (Reservation existing : reservations) {
-            if (existing == editedReservation || "CANCELLED".equals(existing.getStatus())) {
-                continue;
-            }
-            if (!existing.getStartDate().isBefore(checkOut) || !existing.getEndDate().isAfter(checkIn)) {
-                continue;
-            }
-            for (Room assignedRoom : existing.getAssignedRooms()) {
-                if (room.getRoomId().equals(assignedRoom.getRoomId())) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private void editSelectedReservation() {
@@ -405,30 +313,30 @@ public class HotelManagementUI {
             showSelectReservationMessage();
             return;
         }
-        showReservationDialog(reservations.get(reservationTable.convertRowIndexToModel(selectedRow)));
+        showReservationDialog(false);
     }
 
-   private void deleteSelectedReservation() {
+    private void deleteSelectedReservation() {
         int selectedRow = reservationTable.getSelectedRow();
         if (selectedRow < 0) {
             showSelectReservationMessage();
             return;
         }
-        
+
         int result = JOptionPane.showConfirmDialog(null, "Delete the selected reservation from database?",
                 "Confirmation", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        
+
         if (result == JOptionPane.YES_OPTION) {
             long resId = (long) reservationTable.getValueAt(selectedRow, 0);
             String sql = "DELETE FROM reservations WHERE reservation_id = ?";
 
-            try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection();
-                 java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
                 pstmt.setLong(1, resId);
                 pstmt.executeUpdate();
                 refreshTable();
-                
+
             } catch (Exception e) {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(null, "Error when deleting data from MySQL: " + e.getMessage());
@@ -441,37 +349,36 @@ public class HotelManagementUI {
                 "No Reservation Selected", JOptionPane.INFORMATION_MESSAGE);
     }
 
-private void refreshTable() {
-    tableModel.setRowCount(0);
-    String sql = "SELECT r.reservation_id, g.name AS guest_name, g.phone, rt.name AS room_type_name, " +
-                 "rm.room_number, r.start_date, r.end_date, r.status " +
-                 "FROM reservations r " +
-                 "LEFT JOIN guests g ON r.guest_id = g.guest_id " +
-                 "LEFT JOIN room_types rt ON r.room_type_id = rt.room_type_id " +
-                 "LEFT JOIN rooms rm ON r.room_id = rm.room_id";
+    private void refreshTable() {
+        tableModel.setRowCount(0);
+        String sql = "SELECT r.reservation_id, g.name AS guest_name, g.phone, rt.name AS room_type_name, " +
+                "rm.room_number, r.start_date, r.end_date, r.status " +
+                "FROM reservations r " +
+                "LEFT JOIN guests g ON r.guest_id = g.guest_id " +
+                "LEFT JOIN room_types rt ON r.room_type_id = rt.room_type_id " +
+                "LEFT JOIN rooms rm ON r.room_id = rm.room_id";
 
-    try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection();
-         java.sql.Statement stmt = conn.createStatement();
-         java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
-        while (rs.next()) {
-            tableModel.addRow(new Object[]{
-                rs.getLong("reservation_id"),
-                rs.getString("guest_name"),
-                rs.getString("phone"),
-                rs.getString("room_type_name"),
-                rs.getString("room_number") != null ? rs.getString("room_number") : "Unassigned",
-                rs.getDate("start_date") != null ? rs.getDate("start_date").toLocalDate() : null,
-                rs.getDate("end_date") != null ? rs.getDate("end_date").toLocalDate() : null,
-                rs.getString("status")
-            });
+            while (rs.next()) {
+                tableModel.addRow(new Object[]{
+                        rs.getLong("reservation_id"),
+                        rs.getString("guest_name"),
+                        rs.getString("phone"),
+                        rs.getString("room_type_name"),
+                        rs.getString("room_number") != null ? rs.getString("room_number") : "Unassigned",
+                        rs.getDate("start_date") != null ? rs.getDate("start_date").toLocalDate() : null,
+                        rs.getDate("end_date") != null ? rs.getDate("end_date").toLocalDate() : null,
+                        rs.getString("status")
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error when loading data from MySQL: " + e.getMessage());
         }
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        javax.swing.JOptionPane.showMessageDialog(null, "Error when loading data from MySQL: " + e.getMessage());
     }
-}
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(HotelManagementUI::new);
