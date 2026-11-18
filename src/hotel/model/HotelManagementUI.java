@@ -1,6 +1,7 @@
 package hotel.model;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
@@ -84,6 +85,46 @@ public class HotelManagementUI {
         reservationTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         reservationTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
         reservationTable.setFillsViewportHeight(true);
+
+        // Custom Renderer để đổi màu cột Check-out khi đến hạn hoặc quá hạn
+        reservationTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus,
+                                                           int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                // Mặc định font và màu chữ bình thường nếu không được chọn
+                if (!isSelected) {
+                    c.setForeground(Color.BLACK);
+                    c.setFont(table.getFont());
+                }
+
+                // Cột "Check-out" là cột index số 6
+                if (column == 6 && value != null) {
+                    try {
+                        LocalDate checkOutDate = LocalDate.parse(value.toString());
+                        LocalDate today = LocalDate.now();
+                        
+                        // Lấy trạng thái của dòng hiện tại (cột index số 7)
+                        int modelRow = table.convertRowIndexToModel(row);
+                        String status = (String) table.getModel().getValueAt(modelRow, 7);
+
+                        // Nếu chưa Cancelled/Completed và ngày hiện tại >= ngày Check-out
+                        if (!"CANCELLED".equals(status) && !"COMPLETED".equals(status)) {
+                            if (!today.isBefore(checkOutDate)) {
+                                if (!isSelected) {
+                                    c.setForeground(new Color(210, 40, 40)); // Màu đỏ nổi bật
+                                }
+                                c.setFont(new Font("SansSerif", Font.BOLD, 12)); // Chữ đậm
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                return c;
+            }
+        });
 
         JScrollPane scrollPane = new JScrollPane(reservationTable);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(222, 227, 233)));
