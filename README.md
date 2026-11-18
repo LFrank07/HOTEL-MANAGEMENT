@@ -1,4 +1,4 @@
-# Hotel Management System
+# Hotel Management System 
 
 A decoupled Java domain model and relational database architecture for an end-to-end hotel management system.
 
