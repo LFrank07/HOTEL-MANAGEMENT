@@ -15,7 +15,7 @@ CREATE TABLE Hotels (
 CREATE TABLE Position (
     Role_ID INT NOT NULL,
     DepartmentFocus VARCHAR(50) NOT NULL,
-    Level ENUM('Junior','Senior','Supervisor','Manager'),
+    Level ENUM('Junior','Senior','Supervisor','Manager') NOT NULL,
     BaseRole VARCHAR(50) NOT NULL,
     CONSTRAINT PK_Position PRIMARY KEY (Role_ID),
     CONSTRAINT UQ_Position_Title UNIQUE (BaseRole, DepartmentFocus, Level)
@@ -121,6 +121,7 @@ CREATE TABLE Reservation (
     NoOfGuests INT NOT NULL DEFAULT 1,
     Guest_ID INT NULL,
     TypeID INT NOT NULL,
+    Hotel_ID INT NOT NULL,
     CONSTRAINT PK_Reservation PRIMARY KEY (Reservation_ID),
     CONSTRAINT CHK_Reservation_Guests CHECK (NoOfGuests > 0),
     CONSTRAINT CHK_Reservation_Dates CHECK (EndDate >= StartDate),
@@ -129,6 +130,9 @@ CREATE TABLE Reservation (
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT FK_Reservation_RoomType FOREIGN KEY (TypeID)
         REFERENCES RoomType (TypeID)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT FK_Reservation_Hotels FOREIGN KEY (Hotel_ID)
+        REFERENCES Hotels (Hotel_ID)
         ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
@@ -209,9 +213,11 @@ CREATE INDEX IDX_Stays_Room_Dates ON Stays (Hotel_ID, Room_Number, CheckIn, Chec
 
 CREATE INDEX IDX_RatePlan_Dates ON RatePlan (StartDate, EndDate);
 
+CREATE INDEX IDX_Reservation_Hotel_Dates ON Reservation (Hotel_ID, TypeID, StartDate, EndDate);
+
 -- Business rules that compare rows or tables cannot be written as CHECK
--- constraints, so they are enforced with triggers.
--- MySQL: DELIMITER, SIGNAL SQLSTATE '45000' and the trigger body syntax.
+-- constraints, so they are enforced with triggers. Each trigger raises an
+-- error with SIGNAL SQLSTATE '45000' when a rule is broken.
 DELIMITER $$
 
 CREATE TRIGGER TRG_Reservation_Capacity_BI
@@ -221,6 +227,11 @@ BEGIN
     IF NEW.NoOfGuests > (SELECT Capacity FROM RoomType WHERE TypeID = NEW.TypeID) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Number of guests exceeds the capacity of the room type';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM Room
+                   WHERE Hotel_ID = NEW.Hotel_ID AND TypeID = NEW.TypeID) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This hotel has no room of the reserved room type';
     END IF;
 END$$
 
@@ -232,12 +243,22 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Number of guests exceeds the capacity of the room type';
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM Room
+                   WHERE Hotel_ID = NEW.Hotel_ID AND TypeID = NEW.TypeID) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This hotel has no room of the reserved room type';
+    END IF;
 END$$
 
 CREATE TRIGGER TRG_Stays_Rules_BI
 BEFORE INSERT ON Stays
 FOR EACH ROW
 BEGIN
+    IF NEW.Hotel_ID <> (SELECT Hotel_ID FROM Reservation
+                        WHERE Reservation_ID = NEW.Reservation_ID) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The stay is not at the hotel of the reservation';
+    END IF;
     IF (SELECT TypeID FROM Room
         WHERE Hotel_ID = NEW.Hotel_ID AND Room_Number = NEW.Room_Number)
        <> (SELECT TypeID FROM Reservation
@@ -260,6 +281,11 @@ CREATE TRIGGER TRG_Stays_Rules_BU
 BEFORE UPDATE ON Stays
 FOR EACH ROW
 BEGIN
+    IF NEW.Hotel_ID <> (SELECT Hotel_ID FROM Reservation
+                        WHERE Reservation_ID = NEW.Reservation_ID) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'The stay is not at the hotel of the reservation';
+    END IF;
     IF (SELECT TypeID FROM Room
         WHERE Hotel_ID = NEW.Hotel_ID AND Room_Number = NEW.Room_Number)
        <> (SELECT TypeID FROM Reservation
@@ -279,9 +305,6 @@ BEGIN
 END$$
 
 DELIMITER ;
-
-USE `Hotel_Management_Group3`;
-
 
 INSERT INTO Hotels (Hotel_ID, Name, Address) VALUES
 (1, 'Saigon Riverside Hotel', '12 Ton Duc Thang, District 1, Ho Chi Minh City'),
@@ -723,83 +746,83 @@ INSERT INTO Guests_Phone (Phone, Guest_ID) VALUES
 ('0868123987', 19),
 ('0779456123', 20);
 
-INSERT INTO Reservation (Reservation_ID, StartDate, EndDate, BookingStatus, NoOfGuests, Guest_ID, TypeID) VALUES
-(1, '2026-02-13', '2026-02-16', 'CheckedOut', 2, 1, 1),
-(2, '2026-02-18', '2026-02-21', 'CheckedOut', 2, 2, 2),
-(3, '2026-03-05', '2026-03-08', 'CheckedOut', 1, 3, 1),
-(4, '2026-03-20', '2026-03-22', 'CheckedOut', 4, 4, 3),
-(5, '2026-04-10', '2026-04-13', 'CheckedOut', 2, 1, 2),
-(6, '2026-04-25', '2026-04-28', 'CheckedOut', 1, 5, 1),
-(7, '2026-05-29', '2026-06-03', 'CheckedOut', 2, 6, 2),
-(8, '2026-06-15', '2026-06-18', 'CheckedOut', 2, 2, 1),
-(9, '2026-06-20', '2026-06-24', 'CheckedOut', 3, 7, 4),
-(10, '2026-07-10', '2026-07-14', 'CheckedOut', 4, 1, 3),
-(11, '2026-07-18', '2026-07-21', 'CheckedOut', 2, 8, 2),
-(12, '2026-07-25', '2026-07-29', 'CheckedOut', 2, 9, 4),
-(13, '2026-08-05', '2026-08-08', 'CheckedOut', 2, 2, 2),
-(14, '2026-08-20', '2026-08-23', 'CheckedOut', 1, 3, 1),
-(15, '2026-08-30', '2026-09-04', 'CheckedOut', 2, 10, 4),
-(16, '2026-09-12', '2026-09-15', 'CheckedOut', 1, 9, 1),
-(17, '2026-10-02', '2026-10-05', 'CheckedOut', 3, 11, 3),
-(18, '2026-10-20', '2026-10-23', 'CheckedOut', 2, 4, 2),
-(19, '2026-11-03', '2026-11-06', 'CheckedOut', 1, 5, 1),
-(20, '2026-11-14', '2026-11-18', 'CheckedIn', 2, 6, 1),
-(21, '2026-11-15', '2026-11-19', 'CheckedIn', 2, 7, 2),
-(22, '2026-11-16', '2026-11-20', 'CheckedIn', 1, 8, 2),
-(23, '2026-11-13', '2026-11-18', 'CheckedIn', 4, 10, 3),
-(24, '2026-09-20', '2026-09-22', 'Cancelled', 3, 3, 3),
-(25, '2026-10-10', '2026-10-12', 'NoShow', 1, 11, 1),
-(26, '2026-12-22', '2026-12-26', 'Confirmed', 2, 1, 4),
-(27, '2026-12-05', '2026-12-07', 'Pending', 2, 4, 2),
-(28, '2027-01-01', '2027-01-04', 'Confirmed', 4, 2, 3),
-(29, '2026-05-10', '2026-05-12', 'Cancelled', 1, NULL, 1),
-(30, '2026-01-05', '2026-01-07', 'CheckedOut', 1, 1, 5),
-(31, '2026-01-13', '2026-01-16', 'CheckedOut', 2, 1, 8),
-(32, '2026-01-23', '2026-01-27', 'CheckedOut', 3, 1, 11),
-(33, '2026-02-04', '2026-02-06', 'CheckedOut', 1, 1, 14),
-(34, '2026-02-18', '2026-02-21', 'CheckedOut', 2, 1, 2),
-(35, '2026-03-03', '2026-03-07', 'CheckedOut', 1, 1, 5),
-(36, '2026-03-18', '2026-03-20', 'CheckedOut', 1, 1, 8),
-(37, '2026-04-01', '2026-04-04', 'CheckedOut', 2, 1, 11),
-(38, '2026-04-17', '2026-04-21', 'CheckedOut', 3, 1, 14),
-(39, '2026-05-05', '2026-05-07', 'CheckedOut', 1, 1, 2),
-(40, '2026-05-13', '2026-05-16', 'CheckedOut', 1, 1, 5),
-(41, '2026-05-23', '2026-05-27', 'CheckedOut', 2, 1, 8),
-(42, '2026-01-08', '2026-01-10', 'CheckedOut', 1, 2, 5),
-(43, '2026-01-19', '2026-01-22', 'CheckedOut', 2, 2, 8),
-(44, '2026-02-01', '2026-02-05', 'CheckedOut', 3, 2, 11),
-(45, '2026-02-23', '2026-02-25', 'CheckedOut', 1, 2, 14),
-(46, '2026-03-09', '2026-03-12', 'CheckedOut', 2, 2, 2),
-(47, '2026-03-25', '2026-03-29', 'CheckedOut', 1, 2, 5),
-(48, '2026-04-12', '2026-04-14', 'CheckedOut', 1, 2, 8),
-(49, '2026-04-20', '2026-04-23', 'CheckedOut', 2, 2, 11),
-(50, '2026-04-30', '2026-05-04', 'CheckedOut', 3, 2, 14),
-(51, '2026-05-12', '2026-05-14', 'CheckedOut', 1, 2, 2),
-(52, '2026-05-23', '2026-05-26', 'CheckedOut', 1, 2, 5),
-(53, '2026-06-05', '2026-06-09', 'CheckedOut', 2, 2, 8),
-(54, '2026-01-12', '2026-01-14', 'CheckedOut', 1, 3, 5),
-(55, '2026-01-26', '2026-01-29', 'CheckedOut', 2, 3, 8),
-(56, '2026-02-11', '2026-02-15', 'CheckedOut', 3, 3, 11),
-(57, '2026-03-01', '2026-03-03', 'CheckedOut', 1, 3, 14),
-(58, '2026-03-10', '2026-03-13', 'CheckedOut', 2, 3, 3),
-(59, '2026-03-20', '2026-03-24', 'CheckedOut', 1, 3, 5),
-(60, '2026-04-01', '2026-04-03', 'CheckedOut', 1, 3, 8),
-(61, '2026-04-12', '2026-04-15', 'CheckedOut', 2, 3, 11),
-(62, '2026-04-25', '2026-04-29', 'CheckedOut', 3, 3, 14),
-(63, '2026-05-10', '2026-05-12', 'CheckedOut', 1, 3, 3),
-(64, '2026-05-24', '2026-05-27', 'CheckedOut', 2, 3, 6),
-(65, '2026-06-09', '2026-06-13', 'CheckedOut', 2, 3, 9),
-(66, '2026-03-03', '2026-03-05', 'CheckedOut', 1, 13, 5),
-(67, '2026-03-20', '2026-03-23', 'CheckedOut', 2, 13, 6),
-(68, '2026-04-06', '2026-04-10', 'CheckedOut', 2, 14, 8),
-(69, '2026-04-23', '2026-04-25', 'CheckedOut', 1, 15, 2),
-(70, '2026-05-10', '2026-05-13', 'CheckedOut', 2, 15, 14),
-(71, '2026-05-27', '2026-05-31', 'CheckedOut', 3, 16, 11),
-(72, '2026-06-13', '2026-06-15', 'CheckedOut', 1, 17, 14),
-(73, '2026-06-30', '2026-07-03', 'CheckedOut', 2, 18, 11),
-(74, '2026-07-17', '2026-07-21', 'CheckedOut', 2, 19, 2),
-(75, '2026-08-03', '2026-08-05', 'CheckedOut', 1, 20, 8),
-(76, '2026-08-20', '2026-08-23', 'CheckedOut', 1, 20, 5);
+INSERT INTO Reservation (Reservation_ID, StartDate, EndDate, BookingStatus, NoOfGuests, Guest_ID, TypeID, Hotel_ID) VALUES
+(1, '2026-02-13', '2026-02-16', 'CheckedOut', 2, 1, 1, 1),
+(2, '2026-02-18', '2026-02-21', 'CheckedOut', 2, 2, 2, 2),
+(3, '2026-03-05', '2026-03-08', 'CheckedOut', 1, 3, 1, 1),
+(4, '2026-03-20', '2026-03-22', 'CheckedOut', 4, 4, 3, 3),
+(5, '2026-04-10', '2026-04-13', 'CheckedOut', 2, 1, 2, 2),
+(6, '2026-04-25', '2026-04-28', 'CheckedOut', 1, 5, 1, 3),
+(7, '2026-05-29', '2026-06-03', 'CheckedOut', 2, 6, 2, 1),
+(8, '2026-06-15', '2026-06-18', 'CheckedOut', 2, 2, 1, 1),
+(9, '2026-06-20', '2026-06-24', 'CheckedOut', 3, 7, 4, 2),
+(10, '2026-07-10', '2026-07-14', 'CheckedOut', 4, 1, 3, 3),
+(11, '2026-07-18', '2026-07-21', 'CheckedOut', 2, 8, 2, 3),
+(12, '2026-07-25', '2026-07-29', 'CheckedOut', 2, 9, 4, 1),
+(13, '2026-08-05', '2026-08-08', 'CheckedOut', 2, 2, 2, 3),
+(14, '2026-08-20', '2026-08-23', 'CheckedOut', 1, 3, 1, 2),
+(15, '2026-08-30', '2026-09-04', 'CheckedOut', 2, 10, 4, 3),
+(16, '2026-09-12', '2026-09-15', 'CheckedOut', 1, 9, 1, 3),
+(17, '2026-10-02', '2026-10-05', 'CheckedOut', 3, 11, 3, 1),
+(18, '2026-10-20', '2026-10-23', 'CheckedOut', 2, 4, 2, 2),
+(19, '2026-11-03', '2026-11-06', 'CheckedOut', 1, 5, 1, 2),
+(20, '2026-11-14', '2026-11-18', 'CheckedIn', 2, 6, 1, 1),
+(21, '2026-11-15', '2026-11-19', 'CheckedIn', 2, 7, 2, 1),
+(22, '2026-11-16', '2026-11-20', 'CheckedIn', 1, 8, 2, 2),
+(23, '2026-11-13', '2026-11-18', 'CheckedIn', 4, 10, 3, 3),
+(24, '2026-09-20', '2026-09-22', 'Cancelled', 3, 3, 3, 3),
+(25, '2026-10-10', '2026-10-12', 'NoShow', 1, 11, 1, 1),
+(26, '2026-12-22', '2026-12-26', 'Confirmed', 2, 1, 4, 1),
+(27, '2026-12-05', '2026-12-07', 'Pending', 2, 4, 2, 2),
+(28, '2027-01-01', '2027-01-04', 'Confirmed', 4, 2, 3, 2),
+(29, '2026-05-10', '2026-05-12', 'Cancelled', 1, NULL, 1, 2),
+(30, '2026-01-05', '2026-01-07', 'CheckedOut', 1, 1, 5, 4),
+(31, '2026-01-13', '2026-01-16', 'CheckedOut', 2, 1, 8, 5),
+(32, '2026-01-23', '2026-01-27', 'CheckedOut', 3, 1, 11, 6),
+(33, '2026-02-04', '2026-02-06', 'CheckedOut', 1, 1, 14, 7),
+(34, '2026-02-18', '2026-02-21', 'CheckedOut', 2, 1, 2, 8),
+(35, '2026-03-03', '2026-03-07', 'CheckedOut', 1, 1, 5, 9),
+(36, '2026-03-18', '2026-03-20', 'CheckedOut', 1, 1, 8, 10),
+(37, '2026-04-01', '2026-04-04', 'CheckedOut', 2, 1, 11, 11),
+(38, '2026-04-17', '2026-04-21', 'CheckedOut', 3, 1, 14, 12),
+(39, '2026-05-05', '2026-05-07', 'CheckedOut', 1, 1, 2, 13),
+(40, '2026-05-13', '2026-05-16', 'CheckedOut', 1, 1, 5, 14),
+(41, '2026-05-23', '2026-05-27', 'CheckedOut', 2, 1, 8, 15),
+(42, '2026-01-08', '2026-01-10', 'CheckedOut', 1, 2, 5, 4),
+(43, '2026-01-19', '2026-01-22', 'CheckedOut', 2, 2, 8, 5),
+(44, '2026-02-01', '2026-02-05', 'CheckedOut', 3, 2, 11, 6),
+(45, '2026-02-23', '2026-02-25', 'CheckedOut', 1, 2, 14, 7),
+(46, '2026-03-09', '2026-03-12', 'CheckedOut', 2, 2, 2, 8),
+(47, '2026-03-25', '2026-03-29', 'CheckedOut', 1, 2, 5, 9),
+(48, '2026-04-12', '2026-04-14', 'CheckedOut', 1, 2, 8, 10),
+(49, '2026-04-20', '2026-04-23', 'CheckedOut', 2, 2, 11, 11),
+(50, '2026-04-30', '2026-05-04', 'CheckedOut', 3, 2, 14, 12),
+(51, '2026-05-12', '2026-05-14', 'CheckedOut', 1, 2, 2, 13),
+(52, '2026-05-23', '2026-05-26', 'CheckedOut', 1, 2, 5, 14),
+(53, '2026-06-05', '2026-06-09', 'CheckedOut', 2, 2, 8, 15),
+(54, '2026-01-12', '2026-01-14', 'CheckedOut', 1, 3, 5, 4),
+(55, '2026-01-26', '2026-01-29', 'CheckedOut', 2, 3, 8, 5),
+(56, '2026-02-11', '2026-02-15', 'CheckedOut', 3, 3, 11, 6),
+(57, '2026-03-01', '2026-03-03', 'CheckedOut', 1, 3, 14, 7),
+(58, '2026-03-10', '2026-03-13', 'CheckedOut', 2, 3, 3, 8),
+(59, '2026-03-20', '2026-03-24', 'CheckedOut', 1, 3, 5, 9),
+(60, '2026-04-01', '2026-04-03', 'CheckedOut', 1, 3, 8, 10),
+(61, '2026-04-12', '2026-04-15', 'CheckedOut', 2, 3, 11, 11),
+(62, '2026-04-25', '2026-04-29', 'CheckedOut', 3, 3, 14, 12),
+(63, '2026-05-10', '2026-05-12', 'CheckedOut', 1, 3, 3, 13),
+(64, '2026-05-24', '2026-05-27', 'CheckedOut', 2, 3, 6, 14),
+(65, '2026-06-09', '2026-06-13', 'CheckedOut', 2, 3, 9, 15),
+(66, '2026-03-03', '2026-03-05', 'CheckedOut', 1, 13, 5, 4),
+(67, '2026-03-20', '2026-03-23', 'CheckedOut', 2, 13, 6, 9),
+(68, '2026-04-06', '2026-04-10', 'CheckedOut', 2, 14, 8, 5),
+(69, '2026-04-23', '2026-04-25', 'CheckedOut', 1, 15, 2, 8),
+(70, '2026-05-10', '2026-05-13', 'CheckedOut', 2, 15, 14, 12),
+(71, '2026-05-27', '2026-05-31', 'CheckedOut', 3, 16, 11, 6),
+(72, '2026-06-13', '2026-06-15', 'CheckedOut', 1, 17, 14, 7),
+(73, '2026-06-30', '2026-07-03', 'CheckedOut', 2, 18, 11, 11),
+(74, '2026-07-17', '2026-07-21', 'CheckedOut', 2, 19, 2, 13),
+(75, '2026-08-03', '2026-08-05', 'CheckedOut', 1, 20, 8, 10),
+(76, '2026-08-20', '2026-08-23', 'CheckedOut', 1, 20, 5, 14);
 
 INSERT INTO Invoices (Invoice_ID, IssueDate, Status) VALUES
 (1, '2026-02-16', 'Paid'),
@@ -946,10 +969,10 @@ INSERT INTO Stays (StayID, CheckIn, Checkout, Reservation_ID, Invoice_ID, Hotel_
 (76, '2026-08-20 14:15:00', '2026-08-23 10:00:00', 76, 76, 14, '101');
 
 -- ---------------------------------------------------------------------
--- 14. Records (services used during a stay; Price = unit price at that time)
---    Breakfast cost 150,000 until June and 180,000 from July: the price is
---    stored here because Services has no price column.
---    Some stays used no services. Service 7 (Bike Rental) is never sold.
+-- Records: services used during a stay (Price = unit price at that time).
+-- Breakfast cost 150,000 until June and 180,000 from July; the price is
+-- stored here because Services has no price column.
+-- Some stays used no services. Service 7 (Bike Rental) is never sold.
 -- ---------------------------------------------------------------------
 INSERT INTO Records (StayID, ServiceID, Date, Price, Quantity) VALUES
 (1, 1, '2026-02-14 07:30:00', 150000.00, 2),
@@ -1142,6 +1165,18 @@ INSERT INTO InvoiceLine (LineID, Invoice_ID, Type, Amount, Description) VALUES
 (1, 19, 'Room', 2400000.00, 'Standard room 102: 3 nights x 800,000 (Base price)'),
 (2, 19, 'Service', 180000.00, 'Breakfast on 2026-11-04: 1 x 180,000'),
 (3, 19, 'Service', 350000.00, 'Airport Transfer on 2026-11-06: 1 x 350,000'),
+(1, 20, 'Room', 2400000.00, 'Standard room 102: 3 nights x 800,000 (Base price, charged to 2026-11-16)'),
+(2, 20, 'Service', 360000.00, 'Breakfast on 2026-11-15: 2 x 180,000'),
+(3, 20, 'Service', 360000.00, 'Breakfast on 2026-11-16: 2 x 180,000'),
+(1, 21, 'Room', 2400000.00, 'Deluxe room 202: 2 nights x 1,200,000 (Base price, charged to 2026-11-16)'),
+(2, 21, 'Service', 600000.00, 'Spa on 2026-11-16: 1 x 600,000'),
+(1, 22, 'Room', 1200000.00, 'Deluxe room 201: 1 night x 1,200,000 (Base price, charged to 2026-11-16)'),
+(2, 22, 'Service', 200000.00, 'Room Service on 2026-11-16: 1 x 200,000'),
+(1, 23, 'Room', 7200000.00, 'Family room 301: 4 nights x 1,800,000 (Base price, charged to 2026-11-16)'),
+(2, 23, 'Service', 720000.00, 'Breakfast on 2026-11-14: 4 x 180,000'),
+(3, 23, 'Service', 720000.00, 'Breakfast on 2026-11-15: 4 x 180,000'),
+(4, 23, 'Service', 160000.00, 'Laundry on 2026-11-15: 2 x 80,000'),
+(5, 23, 'Service', 720000.00, 'Breakfast on 2026-11-16: 4 x 180,000'),
 (1, 30, 'Room', 1300000.00, 'Standard Single room 101: 2 nights x 650,000 (Base price)'),
 (2, 30, 'Service', 450000.00, 'Restaurant Dinner on 2026-01-06: 1 x 450,000'),
 (1, 31, 'Room', 3000000.00, 'Superior Twin room 101: 3 nights x 1,000,000 (Base price)'),
