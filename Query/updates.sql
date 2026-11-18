@@ -59,12 +59,13 @@ WHERE Hotel_ID = 1 AND Room_Number = '999';
 
 -- INSERT and UPDATE on Reservation.
 INSERT INTO Reservation
-    (Reservation_ID, StartDate, EndDate, BookingStatus, NoOfGuests, Guest_ID, TypeID)
+    (Reservation_ID, StartDate, EndDate, BookingStatus, NoOfGuests, Guest_ID, TypeID, Hotel_ID)
 VALUES
-    (9001, '2026-12-01', '2026-12-03', 'Confirmed', 2, 9001, 1);
+    (9001, '2026-12-01', '2026-12-03', 'Confirmed', 2, 9001, 1, 1);
 
+-- Standard rooms hold at most 2 guests, so the update lowers the number.
 UPDATE Reservation
-SET NoOfGuests = 3
+SET NoOfGuests = 1
 WHERE Reservation_ID = 9001;
 
 
@@ -130,7 +131,8 @@ COMMIT;
 
 -- UPDATE and INSERT on Payment.
 UPDATE InvoiceLine
-SET Amount = 480000
+SET Amount = 480000,
+    Description = 'Breakfast: 3 x 150,000 + 30,000 service fee'
 WHERE Invoice_ID = 9001 AND Type = 'Service';
 
 INSERT INTO Payment (PaymentID, PaidDate, Method, Amount, Invoice_ID)
