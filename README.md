@@ -13,7 +13,7 @@ This project provides a structural object-oriented domain model and correspondin
 ##  System Diagrams
 
 ### 1. Entity Relationship Diagram (ERD)
-![Entity Relationship Diagram](https://github.com/LFrank07/HOTEL-MANAGEMENT/blob/f7f1943fa0c1493ce68301d99139a3f79a2cc348/Diagram/erd.png)
+![Entity Relationship Diagram](Diagram/erdplus.png)
 
 ### 2. UML Class Diagram
 ![UML Class Diagram](https://github.com/LFrank07/HOTEL-MANAGEMENT/blob/f7f1943fa0c1493ce68301d99139a3f79a2cc348/Diagram/relationalschema.png)
