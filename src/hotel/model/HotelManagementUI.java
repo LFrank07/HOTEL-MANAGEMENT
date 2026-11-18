@@ -25,39 +25,10 @@ public class HotelManagementUI {
     private long nextGuestId = 1;
 
     public HotelManagementUI() {
-        seedRoomInventory();
         createWindow();
         refreshTable();
     }
-
-    private void seedRoomInventory() {
-        addRoomType(1L, "Standard", 2);
-        addRoomType(2L, "Deluxe", 2);
-        addRoomType(3L, "Family", 4);
-        addRoom(101L, "101", "Available", roomTypes.get(0));
-        addRoom(102L, "102", "Available", roomTypes.get(0));
-        addRoom(201L, "201", "Available", roomTypes.get(1));
-        addRoom(202L, "202", "Available", roomTypes.get(1));
-        addRoom(301L, "301", "Available", roomTypes.get(2));
-    }
-
-    private void addRoomType(Long id, String name, int capacity) {
-        RoomType type = new RoomType();
-        type.setRoomtypeId(id);
-        type.setName(name);
-        type.setCapacity(capacity);
-        roomTypes.add(type);
-    }
-
-    private void addRoom(Long id, String number, String status, RoomType type) {
-        Room room = new Room();
-        room.setRoomId(id);
-        room.setRoomNumber(number);
-        room.setStatus(status);
-        room.setRoomType(type);
-        rooms.add(room);
-    }
-
+    
     private void createWindow() {
         JFrame frame = new JFrame("Hotel Management");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -341,25 +312,37 @@ public class HotelManagementUI {
                 "No Reservation Selected", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void refreshTable() {
-        tableModel.setRowCount(0);
-        for (Reservation reservation : reservations) {
-            Guest guest = reservation.getGuest();
-            RoomType type = reservation.getRoomType();
-            String assignedRoom = reservation.getAssignedRooms().isEmpty()
-                    ? "Unassigned" : reservation.getAssignedRooms().get(0).getRoomNumber();
+private void refreshTable() {
+    tableModel.setRowCount(0);
+    String sql = "SELECT r.reservation_id, g.name AS guest_name, g.phone, rt.name AS room_type_name, " +
+                 "rm.room_number, r.start_date, r.end_date, r.status " +
+                 "FROM reservations r " +
+                 "LEFT JOIN guests g ON r.guest_id = g.guest_id " +
+                 "LEFT JOIN room_types rt ON r.room_type_id = rt.room_type_id " +
+                 "LEFT JOIN rooms rm ON r.room_id = rm.room_id";
+
+    try (java.sql.Connection conn = hotel.model.DatabaseConnection.getConnection();
+         java.sql.Statement stmt = conn.createStatement();
+         java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+
+        while (rs.next()) {
             tableModel.addRow(new Object[]{
-                    reservation.getReservationId(),
-                    guest == null ? "" : guest.getName(),
-                    guest == null ? "" : guest.getPhone(),
-                    type == null ? "" : type.getName(),
-                    assignedRoom,
-                    reservation.getStartDate(),
-                    reservation.getEndDate(),
-                    reservation.getStatus()
+                rs.getLong("reservation_id"),
+                rs.getString("guest_name"),
+                rs.getString("phone"),
+                rs.getString("room_type_name"),
+                rs.getString("room_number") != null ? rs.getString("room_number") : "Unassigned",
+                rs.getDate("start_date") != null ? rs.getDate("start_date").toLocalDate() : null,
+                rs.getDate("end_date") != null ? rs.getDate("end_date").toLocalDate() : null,
+                rs.getString("status")
             });
         }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        javax.swing.JOptionPane.showMessageDialog(null, "Errol when loading data from MySQL: " + e.getMessage());
     }
+}
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(HotelManagementUI::new);
