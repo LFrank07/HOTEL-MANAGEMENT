@@ -49,48 +49,37 @@ Four SQL queries are also represented in relational algebra: Q4, Q7, Q9 and Q10.
 
 **Q4: guests who stayed at every hotel**
 
-\[
-Stayed = \pi_{Guest\_ID,\ Hotel\_ID}(Reservation \bowtie Stays)
-\]
+```text
+Stayed = π (Guest.ID, Hotel.ID (Reservation ⋈ Stays))
 
-\[
-\pi_{Guest\_ID,\ Name}\Big(Guests \bowtie (Stayed \div \pi_{Hotel\_ID}(Hotels))\Big)
-\]
+π (Guest.ID, Name (Guests ⋈ (Stayed ÷ π (Hotel.ID(Hotels))))
+```
 
 **Q7: rooms never used for a stay**
 
-\[
-Unused = \pi_{Hotel\_ID,\ Room\_Number}(Room) - \pi_{Hotel\_ID,\ Room\_Number}(Stays)
-\]
+```text
+Unused = π (Hotel.ID, Room.Number(Room)) − π (Hotel.ID, Room.Number(Stays))
 
-\[
-\pi_{Hotels.Name,\ Room\_Number,\ RoomType.Name,\ Room.RoomStatus}
-(Hotels \bowtie Unused \bowtie Room \bowtie RoomType)
-\]
+π (Hotels.Name, Room.Number, RoomType.Name, Room.RoomStatus (Hotels ⋈ Unused ⋈ Room ⋈ RoomType))
+```
 
 **Q9: guests who used the laundry service**
 
-\[
-\pi_{Guest\_ID,\ Name}\Big(Guests \bowtie Reservation \bowtie Stays \bowtie Records \bowtie \sigma_{ServiceType='Laundry'}(Services)\Big)
-\]
+```text
+π (Guest.ID, Name(Guests ⋈ Reservation ⋈ Stays ⋈ Records ⋈ σ (ServiceType='Laundry'(Services))))
+```
 
 **Q10: guests who stayed in a Suite or used the Spa service**
 
-\[
-R = \pi_{Reservation\_ID,\ Guest\_ID}(Reservation)
-\]
+```text
+R = π (Reservation.ID, Guest.ID(Reservation))
 
-\[
-Suite = \pi_{Guest\_ID}\Big(R \bowtie Stays \bowtie Room \bowtie \sigma_{Name='Suite'}(RoomType)\Big)
-\]
+Suite = π (Guest.ID(R ⋈ Stays ⋈ Room ⋈ σ (Name='Suite'(RoomType))))
 
-\[
-Spa = \pi_{Guest\_ID}\Big(R \bowtie \pi_{StayID,\ Reservation\_ID}(Stays) \bowtie Records \bowtie \sigma_{ServiceType='Spa'}(Services)\Big)
-\]
+Spa = π (Guest.ID(R ⋈ π (StayID, Reservation.ID(Stays) ⋈ Records ⋈ σ (ServiceType='Spa'(Services)))))
 
-\[
-\pi_{Guest\_ID,\ Name}(Guests \bowtie (Suite \cup Spa))
-\]
+π (Guest.ID, Name(Guests ⋈ (Suite ∪ Spa)))
+```
 
 ## 8.6 Assumptions and schema limitations
 
