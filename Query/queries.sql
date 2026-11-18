@@ -27,6 +27,7 @@ JOIN InvoiceLine il
 
 -- Q1. Which rooms are free at one hotel during an inclusive date range?
 -- Checkout date is treated as the first day the room is free.
+-- Rooms held by Pending or Confirmed reservations (no stay yet) are also subtracted.
 WITH inventory AS (
     SELECT
         r.TypeID,
@@ -44,23 +45,39 @@ occupied AS (
     JOIN Room r
         ON s.Hotel_ID = r.Hotel_ID
        AND s.Room_Number = r.Room_Number
-	WHERE s.Hotel_ID = @hotel_id
-	  AND r.RoomStatus <> 'Maintenance'
-	  AND s.CheckIn < DATE_ADD(@to, INTERVAL 1 DAY)
-	  AND (s.Checkout IS NULL
-		   OR s.Checkout >= DATE_ADD(@from, INTERVAL 1 DAY))
+    WHERE s.Hotel_ID = @hotel_id
+      AND r.RoomStatus <> 'Maintenance'
+      AND s.CheckIn < DATE_ADD(@to, INTERVAL 1 DAY)
+      AND (s.Checkout IS NULL
+           OR s.Checkout >= DATE_ADD(@from, INTERVAL 1 DAY))
     GROUP BY r.TypeID
+),
+booked AS (
+    -- Reservations that have no stay yet but already hold a room of a type.
+    SELECT
+        res.TypeID,
+        COUNT(*) AS BookedRooms
+    FROM Reservation res
+    WHERE res.Hotel_ID = @hotel_id
+      AND res.BookingStatus IN ('Pending', 'Confirmed')
+      AND res.StartDate <= @to
+      AND res.EndDate   >  @from
+    GROUP BY res.TypeID
 )
 SELECT
     rt.Name AS RoomType,
     i.TotalRooms,
     COALESCE(o.OccupiedRooms, 0) AS OccupiedRooms,
-    GREATEST(i.TotalRooms - COALESCE(o.OccupiedRooms, 0), 0) AS AvailableRooms
+    COALESCE(b.BookedRooms, 0) AS BookedRooms,
+    GREATEST(i.TotalRooms - COALESCE(o.OccupiedRooms, 0)
+                          - COALESCE(b.BookedRooms, 0), 0) AS AvailableRooms
 FROM inventory i
 JOIN RoomType rt
     ON i.TypeID = rt.TypeID
 LEFT JOIN occupied o
     ON i.TypeID = o.TypeID
+LEFT JOIN booked b
+    ON i.TypeID = b.TypeID
 ORDER BY rt.TypeID;
 
 
@@ -161,6 +178,7 @@ ORDER BY g.Guest_ID;
 
 -- Q5. Which service earns the most revenue per occupied room?
 -- One StayID represents one room occupied during that stay.
+-- Revenue per occupied room = service revenue / number of stays that used the service.
 WITH service_revenue AS (
     SELECT
         sv.ServiceID,
@@ -207,7 +225,7 @@ SELECT
 FROM Stays s
 JOIN Reservation res
     ON s.Reservation_ID = res.Reservation_ID
-JOIN Guests g
+LEFT JOIN Guests g
     ON res.Guest_ID = g.Guest_ID
 JOIN Hotels h
     ON s.Hotel_ID = h.Hotel_ID
@@ -309,7 +327,8 @@ WHERE sv.ServiceType = 'Spa'
 ORDER BY GuestName;
 
 
--- Q11. Which invoices still have an unpaid balance?
+-- Q11. Which closed invoices still have an unpaid balance?
+-- Open invoices (guest still in the hotel) are not counted as debt.
 WITH billed AS (
     SELECT Invoice_ID, SUM(Amount) AS TotalBilled
     FROM InvoiceLine
@@ -339,7 +358,8 @@ JOIN billed b
     ON i.Invoice_ID = b.Invoice_ID
 LEFT JOIN paid p
     ON i.Invoice_ID = p.Invoice_ID
-WHERE b.TotalBilled > COALESCE(p.TotalPaid, 0)
+WHERE i.Status IN ('Unpaid', 'PartiallyPaid')
+  AND b.TotalBilled > COALESCE(p.TotalPaid, 0)
 ORDER BY BalanceDue DESC;
 
 
@@ -363,21 +383,23 @@ ORDER BY h.Name, p.DepartmentFocus, p.Level, e.Name;
 
 
 -- Q13. What is the nightly price of each room type on a selected date?
+-- A room type without a seasonal price on that date uses its base price.
 SELECT
     rt.Name AS RoomType,
-    rp.SeasonName,
+    COALESCE(rp.SeasonName, 'Base price') AS SeasonName,
     rp.StartDate,
     rp.EndDate,
-    hr.Price AS NightlyPrice,
+    COALESCE(hr.Price, rt.BasePrice) AS NightlyPrice,
     rt.BasePrice,
-    ROUND(100 * (hr.Price - rt.BasePrice) / NULLIF(rt.BasePrice, 0), 1) AS PercentageDifference
+    ROUND(100 * (COALESCE(hr.Price, rt.BasePrice) - rt.BasePrice)
+          / NULLIF(rt.BasePrice, 0), 1) AS PercentageDifference
 FROM RoomType rt
-JOIN HasRate hr
-    ON rt.TypeID = hr.TypeID
-JOIN RatePlan rp
-    ON hr.RatePlan_ID = rp.RatePlan_ID
-WHERE @on_date BETWEEN DATE(rp.StartDate) AND DATE(rp.EndDate)
-ORDER BY hr.Price DESC;
+LEFT JOIN RatePlan rp
+    ON @on_date BETWEEN DATE(rp.StartDate) AND DATE(rp.EndDate)
+LEFT JOIN HasRate hr
+    ON hr.TypeID = rt.TypeID
+   AND hr.RatePlan_ID = rp.RatePlan_ID
+ORDER BY NightlyPrice DESC;
 
 
 -- Q14. How much money was received each month, by hotel and payment method?
