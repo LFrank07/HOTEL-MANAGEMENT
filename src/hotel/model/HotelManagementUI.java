@@ -7,8 +7,11 @@ import java.awt.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HotelManagementUI {
 
@@ -31,7 +34,7 @@ public class HotelManagementUI {
     private void createWindow() {
         JFrame frame = new JFrame("Hotel Management");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(980, 560));
+        frame.setMinimumSize(new Dimension(1040, 560));
         frame.setLocationRelativeTo(null);
 
         JPanel root = new JPanel(new BorderLayout(0, 16));
@@ -94,17 +97,20 @@ public class HotelManagementUI {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(222, 227, 233)));
         root.add(scrollPane, BorderLayout.CENTER);
 
+        JButton checkInButton = createButton("Check-In", new Color(26, 127, 150));
         JButton addButton = createButton("+ Add Reservation", new Color(34, 112, 90));
         JButton editButton = createButton("Edit", new Color(54, 91, 135));
         JButton deleteButton = createButton("Delete", new Color(174, 66, 66));
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
+        actions.add(checkInButton);
         actions.add(addButton);
         actions.add(editButton);
         actions.add(deleteButton);
         root.add(actions, BorderLayout.SOUTH);
 
+        checkInButton.addActionListener(event -> checkInSelectedReservation());
         addButton.addActionListener(event -> showReservationDialog(true));
         editButton.addActionListener(event -> editSelectedReservation());
         deleteButton.addActionListener(event -> deleteSelectedReservation());
@@ -129,6 +135,52 @@ public class HotelManagementUI {
         button.setFocusPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
         return button;
+    }
+
+    private String formatSqlError(SQLException e) {
+        int code = e.getErrorCode();
+        String msg = e.getMessage() != null ? e.getMessage() : "Database error";
+
+        if (code == 1451) {
+            return "Can't delete this reservation because it's already linked to a stay.";
+        }
+        if (code == 1452) {
+            return "Some referenced info (guest, room type, or hotel) doesn't exist.";
+        }
+        if (code == 1062) {
+            return "This info already exists. Please double-check and try again.";
+        }
+        if (code == 3819) {
+            return "Data violates CHECK constraint of the database (check dates, guest count or valid values).";
+        }
+        if (code == 1644 || msg.contains("45000")) {
+            return "Couldn't save reservation: " + msg;
+        }
+        return "Database error (" + code + "): " + msg;
+    }
+
+    private boolean isValidStatusTransition(String oldStatus, String newStatus) {
+        if (oldStatus == null || oldStatus.equals(newStatus)) {
+            return true;
+        }
+        switch (oldStatus) {
+            case "Pending":
+                return "Confirmed".equals(newStatus)
+                        || "CheckedIn".equals(newStatus)
+                        || "Cancelled".equals(newStatus)
+                        || "NoShow".equals(newStatus);
+            case "Confirmed":
+                return "CheckedIn".equals(newStatus)
+                        || "Cancelled".equals(newStatus)
+                        || "NoShow".equals(newStatus);
+            case "CheckedIn":
+                return "CheckedOut".equals(newStatus);
+            case "CheckedOut":
+            case "Cancelled":
+            case "NoShow":
+            default:
+                return false;
+        }
     }
 
     private void showReservationDialog(boolean isNew) {
@@ -163,6 +215,7 @@ public class HotelManagementUI {
         JComboBox<String> status = new JComboBox<>(
                 new String[]{"Pending", "Confirmed", "CheckedIn", "CheckedOut", "Cancelled", "NoShow"});
 
+        String oldStatus = null;
         if (!isNew) {
             int selectedRow = reservationTable.getSelectedRow();
             if (selectedRow >= 0) {
@@ -171,7 +224,8 @@ public class HotelManagementUI {
                 roomType.setSelectedItem(reservationTable.getValueAt(selectedRow, 3));
                 startDate.setText(String.valueOf(reservationTable.getValueAt(selectedRow, 5)));
                 endDate.setText(String.valueOf(reservationTable.getValueAt(selectedRow, 6)));
-                status.setSelectedItem(reservationTable.getValueAt(selectedRow, 7));
+                oldStatus = String.valueOf(reservationTable.getValueAt(selectedRow, 7));
+                status.setSelectedItem(oldStatus);
 
                 long resId = ((Number) reservationTable.getValueAt(selectedRow, 0)).longValue();
                 try (Connection conn = DatabaseConnection.getConnection();
@@ -246,6 +300,11 @@ public class HotelManagementUI {
                 String selectedStatus = (String) status.getSelectedItem();
                 String phoneStr = phone.getText().trim();
 
+                if (!isNew && !isValidStatusTransition(oldStatus, selectedStatus)) {
+                    throw new IllegalArgumentException(
+                            "Can't change status from " + oldStatus + " to " + selectedStatus + ".");
+                }
+
                 try (Connection conn = DatabaseConnection.getConnection()) {
                     long guestId = -1;
                     String findGuestSql = "SELECT Guest_ID FROM Guests WHERE Name = ? LIMIT 1";
@@ -264,7 +323,7 @@ public class HotelManagementUI {
                              ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(Guest_ID), 0) + 1 FROM Guests")) {
                             if (rs.next()) nextGuestId = rs.getLong(1);
                         }
-                        String docId = "G" + nextGuestId + "_" + System.currentTimeMillis() % 100000;
+                        String docId = "G" + nextGuestId + "_" + (System.currentTimeMillis() % 100000);
                         String insertGuestSql = "INSERT INTO Guests (Guest_ID, Doc_ID, Name) VALUES (?, ?, ?)";
                         try (PreparedStatement pstmt = conn.prepareStatement(insertGuestSql)) {
                             pstmt.setLong(1, nextGuestId);
@@ -341,11 +400,138 @@ public class HotelManagementUI {
             } catch (IllegalArgumentException exception) {
                 JOptionPane.showMessageDialog(null, exception.getMessage(),
                         "Invalid Information", JOptionPane.WARNING_MESSAGE);
+            } catch (SQLException sqlEx) {
+                sqlEx.printStackTrace();
+                JOptionPane.showMessageDialog(null, formatSqlError(sqlEx),
+                        "Database Rule / Error", JOptionPane.WARNING_MESSAGE);
             } catch (Exception exception) {
                 exception.printStackTrace();
                 JOptionPane.showMessageDialog(null, "Error when saving data to MySQL: " + exception.getMessage(),
                         "Database Error", JOptionPane.WARNING_MESSAGE);
             }
+        }
+    }
+
+    private void checkInSelectedReservation() {
+        int selectedRow = reservationTable.getSelectedRow();
+        if (selectedRow < 0) {
+            showSelectReservationMessage();
+            return;
+        }
+
+        long resId = ((Number) reservationTable.getValueAt(selectedRow, 0)).longValue();
+        String currentStatus = String.valueOf(reservationTable.getValueAt(selectedRow, 7));
+
+        if (!isValidStatusTransition(currentStatus, "CheckedIn")) {
+            JOptionPane.showMessageDialog(null,
+                    "Can't check in while status is " + currentStatus + ".",
+                    "Invalid Status", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            int hotelId;
+            int typeId;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT Hotel_ID, TypeID FROM Reservation WHERE Reservation_ID = ?")) {
+                ps.setLong(1, resId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        JOptionPane.showMessageDialog(null, "Reservation #" + resId + " wasn't found.");
+                        return;
+                    }
+                    hotelId = rs.getInt("Hotel_ID");
+                    typeId = rs.getInt("TypeID");
+                }
+            }
+
+            List<String> rooms = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT Room_Number FROM Room WHERE Hotel_ID = ? AND TypeID = ? AND RoomStatus = 'Available' ORDER BY Room_Number")) {
+                ps.setInt(1, hotelId);
+                ps.setInt(2, typeId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        rooms.add(rs.getString("Room_Number"));
+                    }
+                }
+            }
+
+            if (rooms.isEmpty()) {
+                JOptionPane.showMessageDialog(null,
+                        "No Available room of this room type at this hotel.",
+                        "No Room Available", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            String roomNum = (String) JOptionPane.showInputDialog(
+                    null, "Pick a room for Reservation #" + resId + ":",
+                    "Check-In", JOptionPane.PLAIN_MESSAGE, null,
+                    rooms.toArray(), rooms.get(0));
+            if (roomNum == null) {
+                return;
+            }
+
+            conn.setAutoCommit(false);
+            try {
+                long nextInvoiceId = 1;
+                long nextStayId = 1;
+                try (Statement st = conn.createStatement()) {
+                    try (ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(Invoice_ID), 0) + 1 FROM Invoices")) {
+                        if (rs.next()) nextInvoiceId = rs.getLong(1);
+                    }
+                    try (ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(StayID), 0) + 1 FROM Stays")) {
+                        if (rs.next()) nextStayId = rs.getLong(1);
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO Invoices (Invoice_ID, IssueDate, Status) VALUES (?, CURRENT_DATE(), 'Open')")) {
+                    ps.setLong(1, nextInvoiceId);
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO Stays (StayID, CheckIn, Checkout, Reservation_ID, Invoice_ID, Hotel_ID, Room_Number) " +
+                                "VALUES (?, NOW(), NULL, ?, ?, ?, ?)")) {
+                    ps.setLong(1, nextStayId);
+                    ps.setLong(2, resId);
+                    ps.setLong(3, nextInvoiceId);
+                    ps.setInt(4, hotelId);
+                    ps.setString(5, roomNum);
+                    ps.executeUpdate();
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE Reservation SET BookingStatus = 'CheckedIn' WHERE Reservation_ID = ?")) {
+                    ps.setLong(1, resId);
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+                refreshTable();
+                JOptionPane.showMessageDialog(null,
+                        "Check-In Successful room: " + roomNum + " (Stay #" + nextStayId + ", Invoice #" + nextInvoiceId + ").");
+            } catch (Exception txEx) {
+                try {
+                    conn.rollback();
+                } catch (Exception ignored) {
+                }
+                throw txEx;
+            } finally {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (SQLException sqlEx) {
+            sqlEx.printStackTrace();
+            JOptionPane.showMessageDialog(null, formatSqlError(sqlEx),
+                    "Check-In Failed", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error when Check-In: " + ex.getMessage(),
+                    "Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -379,6 +565,10 @@ public class HotelManagementUI {
                 pstmt.executeUpdate();
                 refreshTable();
 
+            } catch (SQLException sqlEx) {
+                sqlEx.printStackTrace();
+                JOptionPane.showMessageDialog(null, formatSqlError(sqlEx),
+                        "Delete Failed", JOptionPane.WARNING_MESSAGE);
             } catch (Exception e) {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(null, "Error when deleting data from MySQL: " + e.getMessage());
@@ -425,6 +615,9 @@ public class HotelManagementUI {
                         rs.getString("BookingStatus")
                 });
             }
+        } catch (SQLException sqlEx) {
+            sqlEx.printStackTrace();
+            JOptionPane.showMessageDialog(null, formatSqlError(sqlEx));
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Error when loading data from MySQL: " + e.getMessage());
