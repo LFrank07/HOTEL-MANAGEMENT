@@ -7,6 +7,7 @@ SET @from     = '2026-02-14';
 SET @to       = '2026-02-17';
 SET @stay_id  = 1;
 SET @year     = 2026;
+SET @on_date  = '2026-02-15';
 
 -- View used by Q2: one row for each invoice line of a stay.
 CREATE OR REPLACE VIEW v_stay_bill_lines AS
@@ -379,3 +380,24 @@ JOIN Position p
 LEFT JOIN Staff sup
     ON e.Supervisor_ID = sup.Staff_ID
 ORDER BY h.Name, p.DepartmentFocus, p.Level, e.Name;
+
+
+-- Q13. What is the nightly price of each room type on one date?
+-- A rate plan that covers the date gives the seasonal price from HasRate.
+-- If no rate plan covers the date, the room type's BasePrice is used.
+SELECT
+    rt.TypeID,
+    rt.Name AS RoomType,
+    rt.BasePrice,
+    seasonal.SeasonName,
+    COALESCE(seasonal.Price, rt.BasePrice) AS NightlyPrice
+FROM RoomType rt
+LEFT JOIN (
+    SELECT hr.TypeID, rp.SeasonName, hr.Price
+    FROM HasRate hr
+    JOIN RatePlan rp
+        ON hr.RatePlan_ID = rp.RatePlan_ID
+    WHERE @on_date BETWEEN rp.StartDate AND rp.EndDate
+) seasonal
+    ON rt.TypeID = seasonal.TypeID
+ORDER BY rt.TypeID;
