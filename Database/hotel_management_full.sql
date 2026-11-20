@@ -1,3 +1,9 @@
+-- Hotel Management database, Group 3 (IT079IU).
+-- System: MySQL 8.0 or later (CHECK constraints need 8.0.16+). The script drops and
+-- recreates the database, so it can be run twice in a row.
+-- MySQL-specific parts (standard SQL elsewhere):
+--   ENGINE=InnoDB, ENUM columns, CHARACTER SET / COLLATE, backtick quoting,
+--   DELIMITER and CREATE TRIGGER ... SIGNAL SQLSTATE '45000' for the triggers.
 DROP DATABASE IF EXISTS `Hotel_Management_Group3`;
 CREATE DATABASE `Hotel_Management_Group3`
   CHARACTER SET utf8mb4
