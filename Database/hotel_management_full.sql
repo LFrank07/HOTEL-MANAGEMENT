@@ -1,3 +1,9 @@
+-- Hotel Management database, Group 3 (IT079IU).
+-- System: MySQL 8.0 or later (CHECK constraints need 8.0.16+). The script drops and
+-- recreates the database, so it can be run twice in a row.
+-- MySQL-specific parts (standard SQL elsewhere):
+--   ENGINE=InnoDB, ENUM columns, CHARACTER SET / COLLATE, backtick quoting,
+--   DELIMITER and CREATE TRIGGER ... SIGNAL SQLSTATE '45000' for the triggers.
 DROP DATABASE IF EXISTS `Hotel_Management_Group3`;
 CREATE DATABASE `Hotel_Management_Group3`
   CHARACTER SET utf8mb4
@@ -57,6 +63,8 @@ CREATE TABLE RatePlan (
     EndDate DATETIME NOT NULL,
     CONSTRAINT PK_RatePlan PRIMARY KEY (RatePlan_ID),
     CONSTRAINT UQ_RatePlan_SeasonName UNIQUE (SeasonName),
+    CONSTRAINT UQ_RatePlan_StartDate UNIQUE (StartDate),
+    CONSTRAINT UQ_RatePlan_EndDate UNIQUE (EndDate),
     CONSTRAINT CHK_RatePlan_Dates CHECK (EndDate >= StartDate)
 ) ENGINE=InnoDB;
 
@@ -107,7 +115,7 @@ CREATE TABLE HasRate (
 CREATE TABLE Guests_Phone (
     Phone VARCHAR(20) NOT NULL,
     Guest_ID INT NOT NULL,
-    CONSTRAINT PK_Guests_Phone PRIMARY KEY (Phone, Guest_ID),
+    CONSTRAINT PK_Guests_Phone PRIMARY KEY (Phone),
     CONSTRAINT FK_GuestsPhone_Guests FOREIGN KEY (Guest_ID)
         REFERENCES Guests (Guest_ID)
         ON DELETE CASCADE ON UPDATE CASCADE
@@ -301,6 +309,32 @@ BEGIN
                  AND NEW.CheckIn < COALESCE(s.Checkout, '9999-12-31')) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'The room is already occupied during this stay';
+    END IF;
+END$$
+
+CREATE TRIGGER TRG_RatePlan_NoOverlap_BI
+BEFORE INSERT ON RatePlan
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM RatePlan r
+               WHERE r.RatePlan_ID <> NEW.RatePlan_ID
+                 AND r.StartDate <= NEW.EndDate
+                 AND NEW.StartDate <= r.EndDate) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This rate plan overlaps another rate plan';
+    END IF;
+END$$
+
+CREATE TRIGGER TRG_RatePlan_NoOverlap_BU
+BEFORE UPDATE ON RatePlan
+FOR EACH ROW
+BEGIN
+    IF EXISTS (SELECT 1 FROM RatePlan r
+               WHERE r.RatePlan_ID <> NEW.RatePlan_ID
+                 AND r.StartDate <= NEW.EndDate
+                 AND NEW.StartDate <= r.EndDate) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'This rate plan overlaps another rate plan';
     END IF;
 END$$
 
@@ -1381,4 +1415,4 @@ UNION ALL SELECT 'Invoices', COUNT(*) FROM Invoices
 UNION ALL SELECT 'Stays', COUNT(*) FROM Stays
 UNION ALL SELECT 'Records', COUNT(*) FROM Records
 UNION ALL SELECT 'InvoiceLine', COUNT(*) FROM InvoiceLine
-UNION ALL SELECT 'Payment', COUNT(*) FROM Payment;
+UNION ALL SELECT 'Payment', COUNT(*) FROM Payment;
