@@ -13,11 +13,11 @@ This project provides a structural object-oriented domain model and correspondin
 ##  System Diagrams
 
 ### 1. Entity Relationship Diagram (ERD)
-![Entity Relationship Diagram](Diagram/erdplus.png)
+![Entity Relationship Diagram](Diagram/ERD.png)
+
 
 ### 2. UML Class Diagram
-![UML Class Diagram](Diagram/RelationalSchema.png)
-
+![Relational Schema](Diagram/relationalschema.png)
 ---
 
 ##  Domain Architecture
