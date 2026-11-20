@@ -16,7 +16,6 @@ Database system: **MySQL 8.0 or later** (MySQL Workbench 8.0).
 ### 2. Relational Schema
 ![Relational Schema](Diagram/relationalschema.png)
 
-The editable ErdPlus sources are in `Diagram/` (`.erdplus` files).
 
 ---
 
@@ -27,7 +26,7 @@ The editable ErdPlus sources are in `Diagram/` (`.erdplus` files).
 | `Database/hotel_management_full.sql` | The single setup script: drops and recreates the database `Hotel_Management_Group3`, creates the 16 tables, indexes and triggers, and loads the sample data |
 | `Database/business_rules_report.md` | Business rules and how each one is enforced (constraints, triggers, transactions) |
 | `Diagram/` | ERD and Relational Schema (images and ErdPlus files) |
-| `Query/` | The 12 queries, relational algebra images, index demonstration, update statements with transactions, constraint tests, and the query report |
+| `Query/` | The 13 queries, relational algebra images, index demonstration, update statements with transactions, constraint tests, and the query report |
 | `src/` | Java source code (domain model and database connection) |
 
 ---
