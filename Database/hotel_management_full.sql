@@ -1,4 +1,4 @@
-
+DROP DATABASE IF EXISTS `Hotel_Management_Group3`;
 CREATE DATABASE `Hotel_Management_Group3`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
