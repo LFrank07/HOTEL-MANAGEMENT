@@ -2,13 +2,13 @@
 
 Requires MySQL 8.0 or later (MySQL Workbench 8.0).
 
-| File | Content |
-|---|---|
-| `queries.sql` | View and queries Q1 to Q12 |
-| `explain_index.sql` | Shows the execution plan (`EXPLAIN`) of the stay-overlap search, with and without the index |
-| `crud_transaction_tests.sql` | Demonstrates INSERT, UPDATE, DELETE, COMMIT and ROLLBACK |
-| `constraint_tests.sql` | Statements that must fail (duplicate key, missing foreign key, CHECK, triggers); run them one at a time |
-| `08_queries_report.md` | Query descriptions, relational algebra, index and transaction notes |
+| File                         | Content                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `queries.sql`                | View and queries Q1 to Q13                                                                              |
+| `explain_index.sql`          | Shows the execution plan (`EXPLAIN`) of the stay-overlap search, with and without the index             |
+| `crud_transaction_tests.sql` | Demonstrates INSERT, UPDATE, DELETE, COMMIT and ROLLBACK                                                |
+| `constraint_tests.sql`       | Statements that must fail (duplicate key, missing foreign key, CHECK, triggers); run them one at a time |
+| `08_queries_report.md`       | Query descriptions, relational algebra, index and transaction notes                                     |
 
 ## Run order
 
