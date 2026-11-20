@@ -18,6 +18,7 @@ Database: `Hotel_Management_Group3` (MySQL 8.0 or later). Main script: `queries.
 | Q10 | Which guests either stayed in a Suite room or used the Spa service? | UNION |
 | Q11 | Which closed invoices (Unpaid or PartiallyPaid) still have an unpaid balance? | CTE, LEFT JOIN, aggregation |
 | Q12 | Which staff members work at each hotel, with their position and supervisor? | Self LEFT JOIN |
+| Q13 | What is the nightly price of each room type on one date? | LEFT JOIN with derived table, COALESCE |
 
 Q1 to Q5 answer the five questions listed for Topic 23, Hotel Management, in the assignment.
 
@@ -48,36 +49,38 @@ Four SQL queries are also represented in relational algebra: Q4, Q7, Q9 and Q10.
 **Q4: guests who stayed at every hotel**
 
 ```text
-Stayed = π (Guest.ID, Hotel.ID (Reservation ⋈ Stays))
+Stayed = π Guest_ID, Hotel_ID (Reservation ⋈ Stays)
 
-π (Guest.ID, Name (Guests ⋈ (Stayed ÷ π (Hotel.ID(Hotels))))
+π Guest_ID, Name (Guests ⋈ (Stayed ÷ π Hotel_ID (Hotels)))
 ```
 
 **Q7: rooms never used for a stay**
 
 ```text
-Unused = π (Hotel.ID, Room.Number(Room)) − π (Hotel.ID, Room.Number(Stays))
+Unused = π Hotel_ID, Room_Number (Room) − π Hotel_ID, Room_Number (Stays)
 
-π (Hotels.Name, Room.Number, RoomType.Name, Room.RoomStatus (Hotels ⋈ Unused ⋈ Room ⋈ RoomType))
+π Name, Room_Number (Hotels ⋈ Unused)
 ```
 
 **Q9: guests who used the laundry service**
 
 ```text
-π (Guest.ID, Name(Guests ⋈ Reservation ⋈ Stays ⋈ Records ⋈ σ (ServiceType='Laundry'(Services))))
+π Guest_ID, Name (Guests ⋈ Reservation ⋈ Stays ⋈ Records ⋈ σ ServiceType = 'Laundry' (Services))
 ```
 
 **Q10: guests who stayed in a Suite or used the Spa service**
 
 ```text
-R = π (Reservation.ID, Guest.ID(Reservation))
+R = π Reservation_ID, Guest_ID (Reservation)
 
-Suite = π (Guest.ID(R ⋈ Stays ⋈ Room ⋈ σ (Name='Suite'(RoomType))))
+Suite = π Guest_ID (R ⋈ Stays ⋈ Room ⋈ σ Name = 'Suite' (RoomType))
 
-Spa = π (Guest.ID(R ⋈ π (StayID, Reservation.ID(Stays) ⋈ Records ⋈ σ (ServiceType='Spa'(Services)))))
+Spa = π Guest_ID (R ⋈ π StayID, Reservation_ID (Stays) ⋈ Records ⋈ σ ServiceType = 'Spa' (Services))
 
-π (Guest.ID, Name(Guests ⋈ (Suite ∪ Spa)))
+π Guest_ID, Name (Guests ⋈ (Suite ∪ Spa))
 ```
+
+The expressions use the natural join (⋈) on attributes with the same name. The images of the four expressions are in `Query/RA/`.
 
 ## 8.6 Assumptions and schema limitations
 
@@ -86,11 +89,12 @@ Spa = π (Guest.ID(R ⋈ π (StayID, Reservation.ID(Stays) ⋈ Records ⋈ σ (S
 - Q3 calculates occupied room-nights from actual stays. Its denominator uses the total number of registered rooms because the schema does not record when a room entered or left maintenance. The result is therefore an inventory-based occupancy rate, not a maintenance-adjusted historical rate.
 - For Q5, one `StayID` represents one occupied room for that stay. The query divides each service's total revenue by the number of distinct stays in which that service was recorded. This makes the meaning of “revenue per occupied room” explicit for this schema.
 - Q6 uses a LEFT JOIN to `Guests`, so a stay is still listed if its reservation no longer has a guest (`Guest_ID` is set to NULL when a guest is deleted).
+- Q13 shows that the nightly price depends on the room type and the date. A rate plan that covers the date gives the seasonal price from `HasRate`; otherwise the `BasePrice` of the room type is used. Because rate plans cannot overlap, at most one plan covers a date. The date is set with `@on_date`.
 - Q11 lists only invoices with status `Unpaid` or `PartiallyPaid`. Invoices with status `Open` belong to guests who are still in the hotel, so they are not counted as debt.
 - The four relational-algebra expressions show the corresponding relational operations. Q7 projects the identifying room details; SQL returns the same identifying room records with the room type and current status.
 
 ## 8.7 Requirement coverage
 
-The query set contains 12 SQL queries, one view, and four relational-algebra expressions. It includes multi-table joins (Q6), outer joins (Q1, Q6, Q7, Q11 and Q12), GROUP BY with HAVING (Q8), a nested IN query (Q9), NOT EXISTS for the “every hotel” condition (Q4), and a set operation (Q10).
+The query set contains 13 SQL queries, one view, and four relational-algebra expressions. It includes multi-table joins (Q6), outer joins (Q1, Q6, Q7, Q11, Q12 and Q13), GROUP BY with HAVING (Q8), a nested IN query (Q9), NOT EXISTS for the “every hotel” condition (Q4), and a set operation (Q10).
 
 The assignment also requires at least 15 realistic sample rows in every table and enough data for every required query to return a non-empty result. These are database-data and execution checks; they cannot be established by the query scripts or this report alone and must be verified against the loaded sample data.
