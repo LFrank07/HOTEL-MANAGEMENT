@@ -7,7 +7,6 @@ SET @from     = '2026-02-14';
 SET @to       = '2026-02-17';
 SET @stay_id  = 1;
 SET @year     = 2026;
-SET @on_date  = '2026-02-14';
 
 -- View used by Q2: one row for each invoice line of a stay.
 CREATE OR REPLACE VIEW v_stay_bill_lines AS
@@ -380,43 +379,3 @@ JOIN Position p
 LEFT JOIN Staff sup
     ON e.Supervisor_ID = sup.Staff_ID
 ORDER BY h.Name, p.DepartmentFocus, p.Level, e.Name;
-
-
--- Q13. What is the nightly price of each room type on a selected date?
--- A room type without a seasonal price on that date uses its base price.
-SELECT
-    rt.Name AS RoomType,
-    COALESCE(rp.SeasonName, 'Base price') AS SeasonName,
-    rp.StartDate,
-    rp.EndDate,
-    COALESCE(hr.Price, rt.BasePrice) AS NightlyPrice,
-    rt.BasePrice,
-    ROUND(100 * (COALESCE(hr.Price, rt.BasePrice) - rt.BasePrice)
-          / NULLIF(rt.BasePrice, 0), 1) AS PercentageDifference
-FROM RoomType rt
-LEFT JOIN RatePlan rp
-    ON @on_date BETWEEN DATE(rp.StartDate) AND DATE(rp.EndDate)
-LEFT JOIN HasRate hr
-    ON hr.TypeID = rt.TypeID
-   AND hr.RatePlan_ID = rp.RatePlan_ID
-ORDER BY NightlyPrice DESC;
-
-
--- Q14. How much money was received each month, by hotel and payment method?
-SELECT
-    DATE_FORMAT(p.PaidDate, '%Y-%m') AS PaymentMonth,
-    h.Name AS HotelName,
-    p.Method,
-    COUNT(p.PaymentID) AS NumberOfPayments,
-    SUM(p.Amount) AS TotalReceived
-FROM Payment p
-JOIN Invoices i
-    ON p.Invoice_ID = i.Invoice_ID
-JOIN Stays s
-    ON i.Invoice_ID = s.Invoice_ID
-JOIN Hotels h
-    ON s.Hotel_ID = h.Hotel_ID
-WHERE p.PaidDate >= MAKEDATE(@year, 1)
-  AND p.PaidDate < MAKEDATE(@year + 1, 1)
-GROUP BY DATE_FORMAT(p.PaidDate, '%Y-%m'), h.Hotel_ID, h.Name, p.Method
-ORDER BY PaymentMonth, HotelName, p.Method;
