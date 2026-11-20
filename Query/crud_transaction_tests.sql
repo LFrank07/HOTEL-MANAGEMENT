@@ -192,8 +192,8 @@ VALUES (9001, 'Test Room', 500000, 2);
 UPDATE RoomType SET BasePrice = 550000 WHERE TypeID = 9001;
 
 INSERT INTO RatePlan (RatePlan_ID, SeasonName, StartDate, EndDate)
-VALUES (9001, 'Test Season', '2027-02-01 00:00:00', '2027-02-10 23:59:59');
-UPDATE RatePlan SET EndDate = '2027-02-12 23:59:59' WHERE RatePlan_ID = 9001;
+VALUES (9001, 'Test Season', '2027-10-01 00:00:00', '2027-10-10 23:59:59');
+UPDATE RatePlan SET EndDate = '2027-10-12 23:59:59' WHERE RatePlan_ID = 9001;
 
 INSERT INTO HasRate (TypeID, RatePlan_ID, Price) VALUES (9001, 9001, 700000);
 UPDATE HasRate SET Price = 750000 WHERE TypeID = 9001 AND RatePlan_ID = 9001;
