@@ -10,7 +10,7 @@ public class DatabaseConnection {
     // MySQL username (change if not using "root")
     private static final String USER = "root";
     // MySQL password for the user above (update to match your local MySQL password)
-    private static final String PASSWORD = "1234"; 
+    private static final String PASSWORD = ""; 
 
     // Opens a JDBC connection to the MySQL database
     public static Connection getConnection() throws SQLException {
